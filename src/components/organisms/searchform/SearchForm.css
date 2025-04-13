@@ -1,0 +1,169 @@
+/* SearchForm.css */
+
+.search-form-container {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  width: 340px;
+  padding: 1.25rem 1.5rem;
+  z-index: 100;
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+}
+
+/* Tabs estilo Google Chrome */
+/* Tabs estilo Google Chrome con scroll horizontal */
+.tab-buttons {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none; /* Firefox */
+}
+
+.tab-buttons::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.tab-buttons .btn {
+  flex: 0 0 auto;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-buttons .btn:hover {
+  background-color: #e5e7eb;
+}
+
+.tab-buttons .btn.btn-primary {
+  background-color: #ffffff;
+  color: #111827;
+  border: 1px solid #2563eb;
+  border-bottom: none;
+  z-index: 2;
+  position: relative;
+  top: 2px;
+}
+
+
+/* Formulario */
+.search-form-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Labels */
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+/* Inputs */
+.searchbox__input,
+input[type="text"],
+input[type="file"],
+.form-control {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 0.85rem;
+  color: #111827;
+  outline: none;
+  transition: border 0.2s ease;
+  box-sizing: border-box;
+}
+
+.searchbox__input:focus,
+input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb33;
+}
+
+.searchbox__input::placeholder {
+  color: #9ca3af;
+  padding-left: 1.6rem;
+}
+
+/* Ocultar icono lupa si molesta */
+.searchbox__icon {
+  display: none;
+}
+
+/* Botones */
+.search-form-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-outline-secondary {
+  background-color: #f9fafb;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #f3f4f6;
+}
+
+.btn-outline-info {
+  color: #2563eb;
+  background-color: #eff6ff;
+  border: 1px solid #93c5fd;
+}
+
+.btn-outline-info:hover {
+  background-color: #dbeafe;
+}
+
+/* File input (oculto bajo el label custom) */
+input[type="file"] {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .search-form-container {
+    width: 100%;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

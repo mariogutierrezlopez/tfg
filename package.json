@@ -1,0 +1,46 @@
+{
+  "name": "simulador-conduccion-autonoma",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mapbox/mapbox-gl-draw": "^1.5.0",
+    "@mapbox/search-js-react": "^1.0.0-beta.25",
+    "@turf/bezier-spline": "^7.2.0",
+    "@turf/boolean-point-in-polygon": "^7.2.0",
+    "@turf/distance": "^7.2.0",
+    "@turf/helpers": "^7.2.0",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "lodash.debounce": "^4.0.8",
+    "mapbox-gl": "^3.9.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/lodash.debounce": "^4.0.9",
+    "@types/mapbox__mapbox-gl-draw": "^1.4.8",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "bootstrap": "^4.0.0-beta",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "jquery": "^3.7.1",
+    "popper.js": "^1.16.1",
+    "sass-embedded": "^1.85.0",
+    "typescript": "~5.6.2",
+    "typescript-eslint": "^8.18.2",
+    "vite": "^6.0.5"
+  }
+}
