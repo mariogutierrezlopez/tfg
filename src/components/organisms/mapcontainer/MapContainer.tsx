@@ -16,7 +16,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ mapRef, onMapReady }) => {
 
     mapboxgl.accessToken = mapboxToken;
 
-    // 🔥 Limpia mapa previo si existe
     if (mapRef.current) {
       mapRef.current.remove();
       mapRef.current = null;
@@ -43,7 +42,7 @@ const MapContainer: React.FC<MapContainerProps> = ({ mapRef, onMapReady }) => {
     });
 
     return () => {
-      map.remove(); // ✅ elimina el mapa al desmontar
+      map.remove();
       mapRef.current = null;
     };
   }, []);

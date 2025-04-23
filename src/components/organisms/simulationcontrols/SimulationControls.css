@@ -1,0 +1,22 @@
+.simulation-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background-color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    gap: 0.5rem;
+    z-index: 999;
+  }
+  
+  .simulation-controls button {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    background-color: #007AFF;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  

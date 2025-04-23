@@ -1,0 +1,40 @@
+.car-selector-panel {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid #ddd;
+    z-index: 1000;
+  }
+  
+  .car-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+  }
+  
+  .car-option:hover {
+    background: #f0f0f0;
+  }
+  
+  .car-option img {
+    height: 40px;
+    margin-bottom: 0.5rem;
+    transform: rotate(90deg);
+    transition: transform 0.3s ease;
+  }
+  
+  
+  .car-option.selected {
+    background-color: #d0ebff;
+    border: 2px solid #339af0;
+  }
+  

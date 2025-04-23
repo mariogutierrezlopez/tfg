@@ -3,7 +3,7 @@ import { SearchBox } from "@mapbox/search-js-react";
 
 interface InputFieldProps {
   value: string;
-  onChange: (value: string) => void; // onChange es ahora una función que toma el texto como un argumento
+  onChange: (value: string) => void;
   onRetrieve: (feature: GeoJSON.Feature) => void;
   placeholder: string;
 }
@@ -21,8 +21,8 @@ const InputField: React.FC<InputFieldProps> = ({
       accessToken={mapboxToken}
       options={{ language: "es", country: "ES" }}
       placeholder={placeholder}
-      value={value}  // Usamos el valor recibido desde el estado
-      onChange={(e) => onChange(e.target.value)}  // Llamamos onChange cuando el valor cambia
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       onRetrieve={(result) => {
         if (result?.features?.[0]) {
           onRetrieve(result.features[0]);

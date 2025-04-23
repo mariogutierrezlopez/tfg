@@ -1,0 +1,52 @@
+.car-stats-panel {
+    top: 100px;
+    right: 20px;
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    font-family: sans-serif;
+    width: 240px;
+    z-index: 999;
+  }
+  
+  .car-id {
+    font-size: 1.2em;
+    margin-bottom: 8px;
+  }
+  
+  .badge {
+    background-color: #007aff;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+  }
+  
+  .car-stats-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .car-stats-panel li {
+    margin: 6px 0;
+  }
+  
+  .car-stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  

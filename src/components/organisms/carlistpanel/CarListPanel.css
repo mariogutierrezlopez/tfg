@@ -1,0 +1,41 @@
+.car-list-panel {
+    top: 100px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+    width: 200px;
+    z-index: 1001;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  
+  .car-list-panel h3 {
+    margin-top: 0;
+    font-size: 16px;
+  }
+  
+  .car-list-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .car-list-panel li {
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .car-list-panel li:hover {
+    background: #f0f0f0;
+  }
+  
+  .car-list-panel li.selected {
+    background: #007aff;
+    color: white;
+  }
+  
