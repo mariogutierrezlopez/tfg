@@ -51,11 +51,12 @@ export const addCarMarker = async (
   selectedCarType: CarOption,
   destinationCoords: [number, number] | null,
   agentsRef: React.MutableRefObject<CarAgent[]>,
-  setSelectedCarId: (id: string) => void
+  setSelectedCarId: (id: string) => void,
+  token: string
 ) => {
   const fallbackDest: [number, number] = [coord[0] + 0.01, coord[1] + 0.01];
   const destination = destinationCoords ?? fallbackDest;
-  const route = await fetchRouteFrom(coord, destination);
+  const route = await fetchRouteFrom(coord, destination, token);
   if (!route) return;
 
   const agentId = crypto.randomUUID();

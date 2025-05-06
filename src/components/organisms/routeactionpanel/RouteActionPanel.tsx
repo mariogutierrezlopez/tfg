@@ -10,31 +10,37 @@ interface Props {
   drawRef: React.RefObject<MapboxDraw>;
   mode: "full" | "area" | null;
   setMode: (mode: "full" | "area") => void;
-  areaType: "square" | "polygon" | null;
-  setAreaType: (type: "square" | "polygon" | null) => void;
-  onSendSelection?: (coords?: [number, number][]) => void; // 🆕 acepta coords opcionales
+  onSendSelection?: (coords?: [number, number][]) => void;
 }
+
 
 const RouteActionsPanel: React.FC<Props> = ({
   mapRef,
   drawRef,
   mode,
   setMode,
-  areaType,
-  setAreaType,
   onSendSelection,
 }) => {
   const handleSubmit = () => {
     const draw = drawRef.current;
     const map = mapRef.current;
-    const data = draw?.getAll();
 
-    if (!map) return;
+    if (!map || !draw) return;
 
     if (mode === "area") {
-      if (!data || !Array.isArray(data.features) || data.features.length === 0) return;
+      const data = draw.getAll();
+      if (!data || data.features.length === 0) {
+        alert("No hay área seleccionada.");
+        return;
+      }
 
-      const polygon = data.features[0] as Feature<Polygon>;
+      const areaFeature = data.features[0];
+      if (areaFeature.geometry.type !== "Polygon") {
+        alert("El área seleccionada no es válida.");
+        return;
+      }
+
+      const polygon = areaFeature as Feature<Polygon>;
       const routeSource = map.getSource("route") as mapboxgl.GeoJSONSource;
       const routeData = routeSource?._data as GeoJSON.Feature<GeoJSON.LineString>;
 
@@ -76,24 +82,18 @@ const RouteActionsPanel: React.FC<Props> = ({
         },
       });
 
-      const firstCoord = filteredCoords[0] as [number, number];
-      map.fitBounds(
-        filteredCoords.reduce(
-          (bounds: mapboxgl.LngLatBounds, coord) =>
-            bounds.extend(coord as [number, number]),
-          new mapboxgl.LngLatBounds(firstCoord, firstCoord)
-        ),
-        { padding: 40 }
+      const bounds = filteredCoords.reduce(
+        (b: mapboxgl.LngLatBounds, coord) => b.extend(coord),
+        new mapboxgl.LngLatBounds(filteredCoords[0], filteredCoords[0])
       );
 
-      console.log("✂️ Ruta filtrada:", filteredCoords);
-      onSendSelection?.(filteredCoords); // ✅ pasa coords filtradas
+      map.fitBounds(bounds, { padding: 40 });
+      onSendSelection?.(filteredCoords);
       return;
     }
 
     if (mode === "full") {
-      console.log("➡️ Ruta completa seleccionada");
-      onSendSelection?.(); // ✅ animación con ruta completa
+      onSendSelection?.();
     }
   };
 
@@ -104,7 +104,6 @@ const RouteActionsPanel: React.FC<Props> = ({
           className={`btn ${mode === "full" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => {
             setMode("full");
-            setAreaType(null);
             drawRef.current?.deleteAll();
           }}
         >
@@ -112,28 +111,15 @@ const RouteActionsPanel: React.FC<Props> = ({
         </button>
         <button
           className={`btn ${mode === "area" ? "btn-primary" : "btn-outline-primary"}`}
-          onClick={() => setMode("area")}
+          onClick={() => {
+            setMode("area");
+            drawRef.current?.deleteAll();
+          }}
         >
           Seleccionar área
         </button>
       </div>
 
-      {mode === "area" && (
-        <div className="area-options">
-          <button
-            className={`btn ${areaType === "square" ? "btn-secondary" : "btn-outline-secondary"}`}
-            onClick={() => setAreaType("square")}
-          >
-            Área cuadrada
-          </button>
-          <button
-            className={`btn ${areaType === "polygon" ? "btn-secondary" : "btn-outline-secondary"}`}
-            onClick={() => setAreaType("polygon")}
-          >
-            Área con pluma
-          </button>
-        </div>
-      )}
 
       <button className="btn btn-success mt-2" onClick={handleSubmit}>
         Enviar selección

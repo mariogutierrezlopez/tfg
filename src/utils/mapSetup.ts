@@ -1,21 +1,5 @@
-// src/utils/mapSetup.ts
 import * as mapboxgl from "mapbox-gl";
 import { TrafficElement } from "../utils/types";
-import stopSign from "../assets/stop-sign.png";
-import yieldSign from "../assets/yield-sign.png";
-import roundaboutSign from "../assets/roundabout-sign.png";
-
-export const loadImageBitmap = (src: string): Promise<ImageBitmap> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.src = src;
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      createImageBitmap(img).then(resolve).catch(reject);
-    };
-    img.onerror = reject;
-  });
-};
 
 export const drawRoundaboutEntryZone = (
   map: mapboxgl.Map,
@@ -59,27 +43,4 @@ export const drawRoundaboutEntryZone = (
     const source = map.getSource(id) as mapboxgl.GeoJSONSource;
     source.setData(circleFeature);
   }
-};
-
-export const handleMapReady = async (
-  map: mapboxgl.Map,
-  setMapInstance: (map: mapboxgl.Map) => void,
-  mapRef: React.MutableRefObject<mapboxgl.Map | null>
-) => {
-  mapRef.current = map;
-  setMapInstance(map);
-
-  const loadAndAddImage = async (name: string, src: string) => {
-    const img = await loadImageBitmap(src);
-    if (!map.hasImage(name)) {
-      map.addImage(name, img);
-    }
-  };
-
-  // Cargar las imágenes de las señales
-  await loadAndAddImage("stop-sign", stopSign);
-  await loadAndAddImage("yield-sign", yieldSign);
-  await loadAndAddImage("roundabout-sign", roundaboutSign);
-
-  // Fuente y capa de la ruta de coches
 };
