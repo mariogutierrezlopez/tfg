@@ -1,11 +1,9 @@
 import React from "react";
 import "./CarListPanel.css";
+import { CarAgent } from "../../../logic/agents/CarAgents";
 
 type Props = {
-  cars: {
-    id: string;
-    type: { name: string };
-  }[];
+  cars: CarAgent[];
   selectedCarId: string | null;
   onSelect: (carId: string) => void;
 };
@@ -21,7 +19,7 @@ const CarListPanel: React.FC<Props> = ({ cars, selectedCarId, onSelect }) => {
             className={car.id === selectedCarId ? "selected" : ""}
             onClick={() => onSelect(car.id)}
           >
-            {car.type.name}
+            {car.carType.name}
           </li>
         ))}
       </ul>

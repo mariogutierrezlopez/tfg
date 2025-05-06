@@ -16,6 +16,7 @@
     "@turf/boolean-point-in-polygon": "^7.2.0",
     "@turf/distance": "^7.2.0",
     "@turf/helpers": "^7.2.0",
+    "@turf/turf": "^7.2.0",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "lodash.debounce": "^4.0.8",

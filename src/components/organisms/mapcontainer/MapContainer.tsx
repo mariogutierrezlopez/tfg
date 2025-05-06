@@ -4,22 +4,16 @@ import mapboxgl from "mapbox-gl";
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
 interface MapContainerProps {
-  mapRef: React.RefObject<mapboxgl.Map>;
   onMapReady?: (map: mapboxgl.Map) => void;
 }
 
-const MapContainer: React.FC<MapContainerProps> = ({ mapRef, onMapReady }) => {
+const MapContainer: React.FC<MapContainerProps> = ({ onMapReady }) => {
   const localRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!localRef.current) return;
 
     mapboxgl.accessToken = mapboxToken;
-
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
 
     const map = new mapboxgl.Map({
       container: localRef.current,
@@ -28,7 +22,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ mapRef, onMapReady }) => {
       zoom: 13,
     });
 
-    mapRef.current = map;
     onMapReady?.(map);
 
     map.on("style.load", () => {
@@ -43,7 +36,6 @@ const MapContainer: React.FC<MapContainerProps> = ({ mapRef, onMapReady }) => {
 
     return () => {
       map.remove();
-      mapRef.current = null;
     };
   }, []);
 

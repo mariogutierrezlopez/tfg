@@ -2,20 +2,16 @@ import React, { useEffect, useState } from "react";
 import "./CarStatsPanel.css";
 import distance from "@turf/distance";
 import { point as turfPoint } from "@turf/helpers";
+import { CarAgent } from "../../../logic/agents/CarAgents";
 
 type Props = {
-  car: {
-    id: string;
-    marker: mapboxgl.Marker;
-    route: [number, number][];
-  };
+  car: CarAgent;
   carSpeedMps: number;
   simulationSpeed: number;
   isPlaying: boolean;
   onClose: () => void;
+  onRequestRouteChange: (carId: string) => void;
 };
-
-
 
 const formatTime = (s: number) => {
   const mins = Math.floor(s / 60);
@@ -23,7 +19,8 @@ const formatTime = (s: number) => {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
-const CarStatsPanel: React.FC<Props> = ({ car, carSpeedMps, simulationSpeed, isPlaying, onClose }) => {
+const CarStatsPanel: React.FC<Props> = ({ car, carSpeedMps, simulationSpeed, isPlaying, onClose, onRequestRouteChange }) => {
+
   const [startTime, setStartTime] = useState<number | null>(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0); // en ms
   const [lat, setLat] = useState(0);
@@ -31,18 +28,17 @@ const CarStatsPanel: React.FC<Props> = ({ car, carSpeedMps, simulationSpeed, isP
   const [direction, setDirection] = useState(0);
   const [distanceTravelled, setDistanceTravelled] = useState(0);
 
-
   useEffect(() => {
     const interval = setInterval(() => {
-      const pos = car.marker.getLngLat();
-      const rotation = car.marker.getRotation();
-      setLat(pos.lat);
-      setLng(pos.lng);
+      const pos = car.position;
+      const rotation = car.marker.getRotation(); // seguimos usando el marker para el ángulo
+      setLat(pos[1]);
+      setLng(pos[0]);
       setDirection(rotation);
 
       if (car.route.length > 1) {
         const start = turfPoint(car.route[0]);
-        const current = turfPoint([pos.lng, pos.lat]);
+        const current = turfPoint(pos);
         const dist = distance(start, current, { units: "kilometers" });
         setDistanceTravelled(dist);
       }
@@ -54,7 +50,6 @@ const CarStatsPanel: React.FC<Props> = ({ car, carSpeedMps, simulationSpeed, isP
         const now = Date.now();
         const delta = now - startTime;
 
-        // 🆕 Aplicamos el simulationSpeed como multiplicador
         setAccumulatedTime((prev) => prev + delta * simulationSpeed);
         setStartTime(null);
       }
@@ -71,25 +66,23 @@ const CarStatsPanel: React.FC<Props> = ({ car, carSpeedMps, simulationSpeed, isP
       if (startTime) {
         const now = Date.now();
         const delta = now - startTime;
-        // 🆕 Aplicamos también el simulationSpeed
         setTimeElapsed((accumulatedTime + delta * simulationSpeed) / 1000);
       } else {
         setTimeElapsed(accumulatedTime / 1000);
       }
-
     };
 
     const t = setInterval(updateElapsed, 300);
     return () => clearInterval(t);
   }, [startTime, accumulatedTime]);
 
-
   return (
     <div className="car-stats-panel">
-      <div className="car-id">Coche
-      {/* <span className="badge">#{car.id.slice(0, 4).toUpperCase()}</span> */}
-      </div>
+      <div className="car-id">Coche</div>
       <button className="close-btn" onClick={onClose}>x</button>
+      <button className="change-route-btn" onClick={() => onRequestRouteChange(car.id)}>
+        Cambiar ruta
+      </button>
       <ul>
         <li><strong>Velocidad:</strong> {(carSpeedMps * simulationSpeed * 3.6).toFixed(1)} km/h</li>
         <li><strong>Latitud:</strong> {lat.toFixed(5)}</li>
