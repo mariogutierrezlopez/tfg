@@ -33,7 +33,15 @@ export const useCarManager = (
       anchor: "center",
     }).setLngLat(points[0]).addTo(mapInstance);
 
-    const mainCar = new CarAgent("main-car", points[0], points, marker, selectedCarType);
+    const mainCar = new CarAgent(
+      "main-car",
+      points[0],
+      points,
+      marker,
+      selectedCarType,
+      routeData?.stepSpeeds ?? []
+    );
+    
 
     agentsRef.current = agentsRef.current.filter(a => a.id !== "main-car");
     agentsRef.current.push(mainCar);

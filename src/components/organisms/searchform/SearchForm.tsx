@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { SearchBox } from "@mapbox/search-js-react";
-import './SearchForm.css';
+import "./SearchForm.css";
 
 interface Props {
   originText: string;
@@ -11,7 +11,7 @@ interface Props {
   destinationCoords: [number, number] | null;
   setOriginCoords: (coords: [number, number]) => void;
   setDestinationCoords: (coords: [number, number]) => void;
-  setShowGallery: (v: boolean) => void;
+  setShowGallery: (b: boolean) => void;
   handleSearchSelection: (feature: GeoJSON.Feature, isOrigin: boolean) => void;
   onCalculateRoute: () => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -28,6 +28,7 @@ const SearchForm: React.FC<Props> = ({
   destinationCoords,
   setOriginCoords,
   setDestinationCoords,
+  setShowGallery,
   handleSearchSelection,
   onCalculateRoute,
   onFileUpload,
@@ -133,10 +134,12 @@ const SearchForm: React.FC<Props> = ({
       {activeTab === "manual" && (
         <div className="search-form-inner text-muted">
           <p className="mb-2">
-            Selecciona punto A y B directamente en el mapa. Usa <strong>Shift + clic</strong> para seleccionar cada uno.
+            Selecciona punto A y B directamente en el mapa. Usa{" "}
+            <strong>Shift + clic</strong> para seleccionar cada uno.
           </p>
           <p>
-            Esta funcionalidad se implementa con listeners en el mapa (no hay inputs aquí).
+            Esta funcionalidad se implementa con listeners en el mapa (no hay
+            inputs aquí).
           </p>
         </div>
       )}
@@ -144,19 +147,32 @@ const SearchForm: React.FC<Props> = ({
       {/* Tab: Importar CSV */}
       {activeTab === "csv" && (
         <div className="search-form-inner">
-          <label className="form-label">Importar archivo CSV</label>
-          <input type="file" onChange={onFileUpload} />
+          <label className="form-label">
+            Importar archivo CSV
+            <input type="file" onChange={onFileUpload} />
+          </label>
 
-          <div className="mt-3">
-            <p>Puedes importar un archivo CSV o explorar la <button className="btn btn-link p-0" onClick={() => setShowGallery(true)}>galería de escenarios configurados</button> para el simulador.</p>
+          <div className="csv-import-container mt-3">
+            <p className="mb-0 d-inline">
+              Puedes importar un archivo CSV o explorar la{" "}
+              <button
+                className="btn btn-link p-0 d-inline"
+                onClick={() => setShowGallery(true)}
+              >
+                galería de escenarios configurados
+              </button>
+              .
+            </p>
           </div>
         </div>
       )}
 
-
       {/* Botón de calcular ruta (oculto en modo CSV) */}
       {activeTab !== "csv" && (
-        <button className="btn btn-primary mt-3 w-100" onClick={onCalculateRoute}>
+        <button
+          className="btn btn-primary mt-3 w-100"
+          onClick={onCalculateRoute}
+        >
           Calcular ruta
         </button>
       )}

@@ -24,6 +24,9 @@ import { useRouteCalculation } from "./hooks/useRouteCalculation";
 import { useSearchSelection } from "./hooks/useSearchSelection";
 import { useRoadClickBinding } from "./hooks/useRoadClickBinding";
 import { importCarsFromCsv, exportCarsToCsv } from "./utils/csvUtils";
+import ScenarioGalleryModal from "./components/organisms/scenariogallerymodal/ScenarioGalleryModal";
+import { drawMainCarRoute } from "./utils/mapUtils";
+import { addRoadClickableLayer } from "./utils/mapLayers";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -33,22 +36,28 @@ const App: React.FC = () => {
   const drawRef = useMapDraw(mapInstance);
   const [originText, setOriginText] = useState("");
   const [destinationText, setDestinationText] = useState("");
-  const [originCoords, setOriginCoords] = useState<[number, number] | null>(null);
-  const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null);
+  const [originCoords, setOriginCoords] = useState<[number, number] | null>(
+    null
+  );
+  const [destinationCoords, setDestinationCoords] = useState<
+    [number, number] | null
+  >(null);
   const [showPostRouteView, setShowPostRouteView] = useState(false);
   const [mode, setMode] = useState<"full" | "area" | null>(null);
   const [routeStatus, setRouteStatus] = useState<string | null>(null);
   const [routeData, setRouteData] = useState<any | null>(null);
   const [showCarSelector, setShowCarSelector] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [simulationSpeed, setSimulationSpeed] = useState(0.1);
+  const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [showSimulationControls, setShowSimulationControls] = useState(false);
   const isPlayingRef = useRef(isPlaying);
   const speedRef = useRef(simulationSpeed);
   const [selectionSent, setSelectionSent] = useState(false);
   const [trafficRules, setTrafficRules] = useState<TrafficElement[]>([]);
   const agentsRef = useRef<CarAgent[]>([]);
-  const [carPendingRouteChange, setCarPendingRouteChange] = useState<string | null>(null);
+  const [carPendingRouteChange, setCarPendingRouteChange] = useState<
+    string | null
+  >(null);
   const destinationPinRef = useRef<mapboxgl.Marker | null>(null);
   const [showGallery, setShowGallery] = useState(false);
 
@@ -63,7 +72,9 @@ const App: React.FC = () => {
     isPlayingRef,
   });
 
-  const [selectedCarType, setSelectedCarType] = useState<CarOption>(carOptions[0]);
+  const [selectedCarType, setSelectedCarType] = useState<CarOption>(
+    carOptions[0]
+  );
 
   const { startCarAnimation, handleRoadClick } = useCarManager(
     mapInstance,
@@ -82,13 +93,22 @@ const App: React.FC = () => {
     routeData
   );
 
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  useEffect(() => { speedRef.current = simulationSpeed; }, [simulationSpeed]);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+  useEffect(() => {
+    speedRef.current = simulationSpeed;
+  }, [simulationSpeed]);
 
-  const [inputMode, setInputMode] = useState<"search" | "manual" | "csv">("search");
+  const [inputMode, setInputMode] = useState<"search" | "manual" | "csv">(
+    "search"
+  );
   const carSpeedMps = 10;
 
-  useRoadClickBinding(mapInstance, handleRoadClick, [selectedCarType, carPendingRouteChange]);
+  useRoadClickBinding(mapInstance, handleRoadClick, [
+    selectedCarType,
+    carPendingRouteChange,
+  ]);
 
   const { handleRouteCalculation } = useRouteCalculation({
     originCoords,
@@ -102,10 +122,19 @@ const App: React.FC = () => {
   });
 
   useCleanOnUnmount(mapInstance);
-  useManualPointSelection(mapInstance, inputMode, setOriginCoords, setDestinationCoords, handleRouteCalculation);
+  useManualPointSelection(
+    mapInstance,
+    inputMode,
+    setOriginCoords,
+    setDestinationCoords,
+    handleRouteCalculation
+  );
   useDrawModeHandler(mapInstance, drawRef, mode);
 
-  const handleSearchSelection = useSearchSelection(setOriginCoords, setDestinationCoords);
+  const handleSearchSelection = useSearchSelection(
+    setOriginCoords,
+    setDestinationCoords
+  );
   const { onMapReady } = useMapInitialization(setMapInstance, mapRef);
 
   return (
@@ -113,15 +142,36 @@ const App: React.FC = () => {
       <MapContainer onMapReady={onMapReady} />
 
       {showGallery && (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <h2>Galería de escenarios</h2>
-      <p>Aquí puedes listar escenarios predefinidos o cargar componentes dinámicos.</p>
-      <button className="btn btn-secondary mt-3" onClick={() => setShowGallery(false)}>Cerrar</button>
-    </div>
-  </div>
-)}
+        <ScenarioGalleryModal
+          onClose={() => setShowGallery(false)}
+          onSelectScenario={(csvPath) => {
+            fetch(csvPath)
+              .then((res) => res.blob())
+              .then((blob) => {
+                const file = new File([blob], "scenario.csv", {
+                  type: "text/csv",
+                });
+                if (mapRef.current) {
+                  importCarsFromCsv(file, mapRef.current, (cars) => {
+                    agentsRef.current = cars;
 
+                    const mainCar = cars.find((c) => c.id === "main-car");
+                    if (mainCar && mainCar.route.length > 1) {
+                      drawMainCarRoute(mapRef.current!, mainCar.route);
+                    }
+
+                    addRoadClickableLayer(mapRef.current!);
+
+                    setShowSimulationControls(true);
+                    setShowCarSelector(true);
+                    setSelectionSent(true);
+                    setShowGallery(false);
+                  });
+                }
+              });
+          }}
+        />
+      )}
 
       {!selectionSent && (
         <SearchForm
@@ -141,20 +191,22 @@ const App: React.FC = () => {
             if (file && mapRef.current) {
               importCarsFromCsv(file, mapRef.current, (cars) => {
                 agentsRef.current = cars;
-          
-                // 🔥 Activar modo simulación tras importar CSV
+
+                const mainCar = cars.find((c) => c.id === "main-car");
+                if (mainCar && mainCar.route.length > 1) {
+                  drawMainCarRoute(mapRef.current, mainCar.route);
+                }
+
                 setShowSimulationControls(true);
                 setShowCarSelector(true);
                 setSelectionSent(true);
               });
             }
           }}
-          
           inputMode={inputMode}
           setInputMode={setInputMode}
         />
       )}
-
 
       {showPostRouteView && !selectionSent && (
         <RouteActionsPanel
@@ -166,7 +218,6 @@ const App: React.FC = () => {
         />
       )}
 
-
       {showCarSelector && (
         <CarSelectorPanel
           carOptions={carOptions}
@@ -176,9 +227,21 @@ const App: React.FC = () => {
       )}
 
       {routeStatus && (
-        <div className={`alert alert-${routeStatus === "success" ? "success" : "danger"} alert-dismissible fade show`} role="alert">
-          {routeStatus === "success" ? "Ruta calculada con éxito" : "Error al calcular la ruta"}
-          <button type="button" className="custom-close-button" aria-label="Cerrar" onClick={() => setRouteStatus(null)}>
+        <div
+          className={`alert alert-${
+            routeStatus === "success" ? "success" : "danger"
+          } alert-dismissible fade show`}
+          role="alert"
+        >
+          {routeStatus === "success"
+            ? "Ruta calculada con éxito"
+            : "Error al calcular la ruta"}
+          <button
+            type="button"
+            className="custom-close-button"
+            aria-label="Cerrar"
+            onClick={() => setRouteStatus(null)}
+          >
             x
           </button>
           <div className="progress-bar-timer" />
@@ -192,7 +255,9 @@ const App: React.FC = () => {
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             speed={simulationSpeed}
-            onSpeedChange={() => setSimulationSpeed((prev) => (prev === 4 ? 1 : prev * 2))}
+            onSpeedChange={() =>
+              setSimulationSpeed((prev) => (prev === 4 ? 1 : prev * 2))
+            }
           />
 
           <div
@@ -203,22 +268,22 @@ const App: React.FC = () => {
               display: "flex",
               flexDirection: "row",
               gap: "16px",
-              zIndex: 1001
+              zIndex: 1001,
             }}
           >
             {selectedCar && (
               <CarStatsPanel
-                car={selectedCar}
-                carSpeedMps={carSpeedMps}
-                simulationSpeed={simulationSpeed}
-                isPlaying={isPlaying}
-                onClose={() => setSelectedCarId(null)}
-                onRequestRouteChange={(carId) => {
-                  setCarPendingRouteChange(carId);
-                  alert("Haz clic en el mapa para elegir un nuevo destino para el coche.");
-                }}
-              />
-
+              car={selectedCar}
+              carSpeedMps={carSpeedMps}
+              simulationSpeed={simulationSpeed}
+              isPlaying={isPlaying}
+              onClose={() => setSelectedCarId(null)}
+              onRequestRouteChange={(carId) => {
+                setCarPendingRouteChange(carId);
+                alert("Haz clic en el mapa para elegir un nuevo destino para el coche.");
+              }}
+              mapRef={mapRef} // 🆕 aquí
+            />            
             )}
 
             <CarListPanel
@@ -226,7 +291,9 @@ const App: React.FC = () => {
               selectedCarId={selectedCarId}
               onSelect={setSelectedCarId}
             />
-            <button onClick={() => exportCarsToCsv(agentsRef.current)}>Exportar</button>
+            <button onClick={() => exportCarsToCsv(agentsRef.current)}>
+              Exportar
+            </button>
           </div>
         </>
       )}

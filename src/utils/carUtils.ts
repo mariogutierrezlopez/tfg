@@ -57,7 +57,10 @@ export const addCarMarker = async (
   const fallbackDest: [number, number] = [coord[0] + 0.01, coord[1] + 0.01];
   const destination = destinationCoords ?? fallbackDest;
   const route = await fetchRouteFrom(coord, destination, token);
+  const stepSpeeds = route?.stepSpeeds ?? [];
   if (!route) return;
+
+  
 
   const agentId = crypto.randomUUID();
   const marker = new mapboxgl.Marker({
@@ -69,7 +72,8 @@ export const addCarMarker = async (
     anchor: "center",
   }).setLngLat(coord).addTo(map);
 
-  const agent = new CarAgent(agentId, coord, route, marker, selectedCarType);
+  const agent = new CarAgent(agentId, coord, route.coordinates, marker, selectedCarType, stepSpeeds);
+
   agent.targetSpeed = agent.maxSpeed;
   agentsRef.current.push(agent);
 };
@@ -96,8 +100,15 @@ export const startCarAnimation = (
     pitchAlignment: "map",
     anchor: "center",
   }).setLngLat(points[0]).addTo(map);
-
-  const mainCar = new CarAgent("main-car", points[0], points, marker, selectedCarType);
+  console.log("📦 routeData al animar:", routeData);
+  const mainCar = new CarAgent(
+    "main-car",
+    points[0],
+    points,
+    marker,
+    selectedCarType,
+    routeData?.stepSpeeds ?? []
+  );  
   agentsRef.current = agentsRef.current.filter((a) => a.id !== "main-car");
   agentsRef.current.push(mainCar);
 
