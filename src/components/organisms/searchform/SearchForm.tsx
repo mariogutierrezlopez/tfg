@@ -11,6 +11,7 @@ interface Props {
   destinationCoords: [number, number] | null;
   setOriginCoords: (coords: [number, number]) => void;
   setDestinationCoords: (coords: [number, number]) => void;
+  setShowGallery: (v: boolean) => void;
   handleSearchSelection: (feature: GeoJSON.Feature, isOrigin: boolean) => void;
   onCalculateRoute: () => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -52,16 +53,16 @@ const SearchForm: React.FC<Props> = ({
   useEffect(() => {
     const tabEl = tabRef.current;
     if (!tabEl) return;
-  
+
     const handleWheel = (e: WheelEvent) => {
       if (e.deltaY !== 0) {
         e.preventDefault();
         tabEl.scrollLeft += e.deltaY;
       }
     };
-  
+
     tabEl.addEventListener("wheel", handleWheel, { passive: false });
-  
+
     return () => {
       tabEl.removeEventListener("wheel", handleWheel);
     };
@@ -144,14 +145,14 @@ const SearchForm: React.FC<Props> = ({
       {activeTab === "csv" && (
         <div className="search-form-inner">
           <label className="form-label">Importar archivo CSV</label>
-          <input
-            type="file"
-            accept=".csv"
-            className="form-control"
-            onChange={onFileUpload}
-          />
+          <input type="file" onChange={onFileUpload} />
+
+          <div className="mt-3">
+            <p>Puedes importar un archivo CSV o explorar la <button className="btn btn-link p-0" onClick={() => setShowGallery(true)}>galería de escenarios configurados</button> para el simulador.</p>
+          </div>
         </div>
       )}
+
 
       {/* Botón de calcular ruta (oculto en modo CSV) */}
       {activeTab !== "csv" && (

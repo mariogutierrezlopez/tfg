@@ -23,6 +23,7 @@ import { CarOption } from "./utils/types";
 import { useRouteCalculation } from "./hooks/useRouteCalculation";
 import { useSearchSelection } from "./hooks/useSearchSelection";
 import { useRoadClickBinding } from "./hooks/useRoadClickBinding";
+import { importCarsFromCsv, exportCarsToCsv } from "./utils/csvUtils";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   const agentsRef = useRef<CarAgent[]>([]);
   const [carPendingRouteChange, setCarPendingRouteChange] = useState<string | null>(null);
   const destinationPinRef = useRef<mapboxgl.Marker | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
 
   //Estados para los coches
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
@@ -110,6 +112,17 @@ const App: React.FC = () => {
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
       <MapContainer onMapReady={onMapReady} />
 
+      {showGallery && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h2>Galería de escenarios</h2>
+      <p>Aquí puedes listar escenarios predefinidos o cargar componentes dinámicos.</p>
+      <button className="btn btn-secondary mt-3" onClick={() => setShowGallery(false)}>Cerrar</button>
+    </div>
+  </div>
+)}
+
+
       {!selectionSent && (
         <SearchForm
           originText={originText}
@@ -120,9 +133,23 @@ const App: React.FC = () => {
           destinationCoords={destinationCoords}
           setOriginCoords={setOriginCoords}
           setDestinationCoords={setDestinationCoords}
+          setShowGallery={setShowGallery}
           handleSearchSelection={handleSearchSelection}
           onCalculateRoute={handleRouteCalculation}
-          onFileUpload={(e) => console.log("Archivo CSV:", e.target.files?.[0])}
+          onFileUpload={(e) => {
+            const file = e.target.files?.[0];
+            if (file && mapRef.current) {
+              importCarsFromCsv(file, mapRef.current, (cars) => {
+                agentsRef.current = cars;
+          
+                // 🔥 Activar modo simulación tras importar CSV
+                setShowSimulationControls(true);
+                setShowCarSelector(true);
+                setSelectionSent(true);
+              });
+            }
+          }}
+          
           inputMode={inputMode}
           setInputMode={setInputMode}
         />
@@ -199,6 +226,7 @@ const App: React.FC = () => {
               selectedCarId={selectedCarId}
               onSelect={setSelectedCarId}
             />
+            <button onClick={() => exportCarsToCsv(agentsRef.current)}>Exportar</button>
           </div>
         </>
       )}

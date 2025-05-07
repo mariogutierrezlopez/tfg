@@ -21,6 +21,7 @@
     "dotenv": "^16.4.7",
     "lodash.debounce": "^4.0.8",
     "mapbox-gl": "^3.9.4",
+    "papaparse": "^5.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "uuid": "^11.0.5"
@@ -29,6 +30,7 @@
     "@eslint/js": "^9.17.0",
     "@types/lodash.debounce": "^4.0.9",
     "@types/mapbox__mapbox-gl-draw": "^1.4.8",
+    "@types/papaparse": "^5.3.16",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react-swc": "^3.5.0",

@@ -6,7 +6,7 @@ import { fetchRouteFrom } from "../utils/routeUtils";
 
 export const useCarManager = (
   mapInstance: mapboxgl.Map | null,
-  mapRef: React.RefObject<mapboxgl.Map>,    
+  mapRef: React.RefObject<mapboxgl.Map>,
   agentsRef: React.MutableRefObject<CarAgent[]>,
   selectedCarType: any,
   destinationCoords: [number, number] | null,
@@ -41,29 +41,7 @@ export const useCarManager = (
     setShowCarSelector(true);
     setShowSimulationControls(true);
     setSelectionSent(true);
-
-    // Volver a añadir la capa gris
-    try {
-      if (mapInstance.getLayer("roads-clickable-layer")) {
-        mapInstance.removeLayer("roads-clickable-layer");
-      }
-
-      mapInstance.addLayer({
-        id: "roads-clickable-layer",
-        type: "line",
-        source: "composite",
-        "source-layer": "road",
-        layout: {},
-        paint: {
-          "line-color": "#888",
-          "line-width": 4,
-          "line-opacity": 0.2,
-        },
-      }, "road-label");
-    } catch (e) {
-      console.error("No se pudo añadir capa de carreteras:", e);
-    }
-  }, [mapInstance, selectedCarType]);
+  }, [mapInstance, selectedCarType, routeData]);
 
   const handleRoadClick = useCallback(async (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
     const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
@@ -109,7 +87,18 @@ export const useCarManager = (
     }
 
     await addCarMarker(coord, mapInstance!, selectedCarType, destinationCoords, agentsRef, setSelectedCarId, token);
-  }, [mapInstance, selectedCarType, destinationCoords, carPendingRouteChange]);
+  }, [
+    agentsRef,
+    carPendingRouteChange,
+    destinationCoords,
+    destinationPinRef,
+    mapInstance,
+    mapRef,
+    selectedCarType,
+    setCarPendingRouteChange,
+    setSelectedCarId,
+    token
+  ]);
 
   return { startCarAnimation, handleRoadClick };
 };
