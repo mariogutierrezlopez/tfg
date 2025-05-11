@@ -171,7 +171,8 @@ const SearchForm: React.FC<Props> = ({
       {activeTab !== "csv" && (
         <button
           className="btn btn-primary mt-3 w-100"
-          onClick={onCalculateRoute}
+          onClick={() => onCalculateRoute()}
+
         >
           Calcular ruta
         </button>

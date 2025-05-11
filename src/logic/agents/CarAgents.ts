@@ -19,6 +19,9 @@ export class CarAgent extends TrafficAgent {
   private processedRuleIds: Set<string> = new Set();
   private insideRoundaboutIds: Set<string> = new Set(); // 🆕 múltiples rotondas
   targetSpeed = 0;
+  currentStepSpeed: number = 0; // velocidad actual del paso
+  prevPosition: [number, number];
+
 
   constructor(
     id: string,
@@ -26,102 +29,87 @@ export class CarAgent extends TrafficAgent {
     route: [number, number][],
     marker: mapboxgl.Marker,
     carType: CarOption,
-    public stepSpeeds: number[] = [] // ⬅️ guarda los límites
+    public stepSpeeds: number[] = []
   ) {
     super(id, position, route, marker, carType.id);
-    this.maxSpeed = 100; // 🚗 10 m/s = 36 km/h
-    this.targetSpeed = this.maxSpeed;
-    this.acceleration = 2; // m/s², ajustable
+    this.maxSpeed = 100;
+    this.targetSpeed = stepSpeeds[0] ?? this.maxSpeed;
+    this.acceleration = 2;
     this.carType = carType;
-    this.targetSpeed = this.maxSpeed;
+    this.prevPosition = [...position]; // ⬅️ Añade esta línea
     console.log(`[${id}] CarAgent creado con stepSpeeds:`, stepSpeeds);
-
   }
+  
 
   reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
     if (this.stopped) return;
-
+  
     let shouldSlowDown = false;
-
+  
     for (const rule of rules) {
-      if (this.hasPassedRule(rule)) continue;
-
       const d = distance(turfPoint(this.position), turfPoint(rule.location), {
         units: "meters",
       });
-
-      // ✅ RONDAS
+  
       if (rule.type === "roundabout") {
-        const isInside = d < rule.radius - 5;
-
+        const isInside = d < rule.radius;
+  
         if (isInside) {
           this.insideRoundaboutIds.add(rule.id);
           this.processedRuleIds.add(rule.id);
           continue;
         }
+  
+        const isApproaching = d < rule.radius + 25;
 
-        const isApproaching = d < rule.radius + 15;
-
+  
         if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
           const carsInside = others.filter((o) =>
             o.insideRoundaboutIds.has(rule.id)
           );
-
+          
+          // 🚨 Si hay cualquiera dentro, paro
           if (carsInside.length > 0) {
-            if (!this.stopped) {
-              this.stopped = true;
-              this.stopTimer = 2; // Pausa de 2 segundos
-              this.speed = 0;
-              this.targetSpeed = 0;
-            }
-            return;
-          } else {
-            // Solo ralentizar si no hay nadie
-            this.targetSpeed = Math.min(this.targetSpeed, 1.5); // 1.5 m/s (~5.4 km/h)
-            shouldSlowDown = true;
-          }
-        }
-
-        continue;
-      }
-
-      // 🚦 OTRAS REGLAS
-      if (d < rule.radius + 15) {
-        if (rule.priorityRule === "must-stop") {
-          if (d < rule.radius && !this.processedRuleIds.has(rule.id)) {
             this.stopped = true;
-            this.stopTimer = 2;
+            this.stopTimer = 1.5; // o más si quieres más espera
             this.speed = 0;
-            this.processedRuleIds.add(rule.id);
+            this.targetSpeed = 0;
             return;
           } else {
-            this.targetSpeed = Math.min(this.targetSpeed, 1.0);
+            // 🚗 Reducir velocidad para entrar despacio si nadie dentro
+            this.targetSpeed = Math.min(this.targetSpeed, 1.5);
             shouldSlowDown = true;
           }
-        } else if (rule.priorityRule === "give-way") {
-          this.targetSpeed = Math.min(this.targetSpeed, 1.0);
-          shouldSlowDown = true;
         }
+      }
+  
+      if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
+        this.targetSpeed = Math.min(this.targetSpeed, 1.0);
+        shouldSlowDown = true;
       }
     }
-
-    // Limpiar si ha salido de alguna rotonda
+  
+    // Limpiar reglas de rotonda si ya saliste
     for (const rule of rules) {
       if (rule.type === "roundabout" && this.insideRoundaboutIds.has(rule.id)) {
         const d = distance(turfPoint(this.position), turfPoint(rule.location), {
           units: "meters",
         });
         if (d > rule.radius + 10) {
-          this.insideRoundaboutIds.delete(rule.id); // ya salió
+          this.insideRoundaboutIds.delete(rule.id);
         }
       }
     }
-
-    if (!shouldSlowDown && this.targetSpeed < this.maxSpeed) {
-      this.targetSpeed += this.acceleration * 0.5; // Aceleración progresiva
-      this.targetSpeed = Math.min(this.targetSpeed, this.maxSpeed);
+  
+    if (!shouldSlowDown) {
+      this.targetSpeed = Math.min(
+        this.targetSpeed + this.acceleration * 0.5,
+        this.currentStepSpeed
+      );
     }
   }
+  
+  
 
   hasPassedRule(rule: TrafficElement): boolean {
     if (this.route.length < 1) return false;
@@ -157,6 +145,9 @@ export class CarAgent extends TrafficAgent {
     const distToSnapped = turfDistance(turfPoint(this.position), snapped, {
       units: "meters",
     });
+
+    this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
+
 
     return distToSnapped > distToRule;
   }
@@ -202,11 +193,15 @@ export class CarAgent extends TrafficAgent {
   }
 
   updatePosition(dt: number) {
-    // Determinar tramo actual y actualizar límite de velocidad
-    const totalRoute = this.route.length + 1; // Incluyendo el punto actual
+    this.prevPosition = [...this.position]; // ⬅️ Guarda posición previa al inicio
+  
+    const totalRoute = this.route.length + 1;
     const stepIndex = Math.max(0, this.stepSpeeds.length - totalRoute);
-    this.maxSpeed = this.stepSpeeds[stepIndex] ?? this.maxSpeed; // Fallback a valor anterior
-
+    this.currentStepSpeed = this.stepSpeeds[stepIndex] ?? this.maxSpeed;
+    this.maxSpeed = this.currentStepSpeed;
+  
+    this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
+  
     if (this.stopped) {
       this.stopTimer -= dt;
       if (this.stopTimer <= 0) {
@@ -214,54 +209,44 @@ export class CarAgent extends TrafficAgent {
       }
       return;
     }
-
-    // Ajuste progresivo de velocidad hacia target
+  
     if (this.speed < this.targetSpeed) {
-      this.speed = Math.min(
-        this.targetSpeed,
-        this.speed + this.acceleration * dt
-      );
+      this.speed = Math.min(this.targetSpeed, this.speed + this.acceleration * dt);
     } else if (this.speed > this.targetSpeed) {
-      this.speed = Math.max(
-        this.targetSpeed,
-        this.speed - this.acceleration * dt
-      );
+      this.speed = Math.max(this.targetSpeed, this.speed - this.acceleration * dt);
     }
-
+  
     const next = this.route[0];
     if (!next) return;
-
+  
     const currentPos = turfPoint(this.position);
     const nextPos = turfPoint(next);
     const distToNext = distance(currentPos, nextPos, { units: "meters" });
-
-    // ⛔️ Protección: evitar quedarse atascado por pasos minúsculos
+  
     const rawStep = this.speed * dt;
-    const MIN_STEP = 0.05; // 5 cm mínimo
+    const MIN_STEP = 0.05;
     const maxStep = Math.max(rawStep, MIN_STEP);
-
+  
     if (distToNext === 0 && this.route.length > 1) {
       this.route.shift();
       return;
     }
-
+  
     if (distToNext <= maxStep) {
       this.position = next;
       this.route.shift();
     } else {
       const angle = bearing(currentPos, nextPos);
-      const moved = destination(currentPos, maxStep, angle, {
-        units: "meters",
-      });
+      const moved = destination(currentPos, maxStep, angle, { units: "meters" });
       this.position = moved.geometry.coordinates as [number, number];
     }
-
-    // Rotación del coche
+  
     const newAngle = bearing(currentPos, nextPos);
     const smoothed = this.lastRotation + (newAngle - this.lastRotation) * 0.2;
     this.lastRotation = smoothed;
     this.marker.setRotation(smoothed);
   }
+  
 
   reactToOtherCars(others: CarAgent[], rules: TrafficElement[]) {
     if (this.stopped) return;
@@ -327,5 +312,7 @@ export class CarAgent extends TrafficAgent {
     if (!shouldSlow) {
       this.targetSpeed = this.maxSpeed;
     }
+    this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
+
   }
 }

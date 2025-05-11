@@ -3,6 +3,7 @@ import mapboxgl from "mapbox-gl";
 import stopSign from "../assets/stop-sign.png";
 import yieldSign from "../assets/yield-sign.png";
 import roundaboutSign from "../assets/roundabout-sign.png";
+import { addRoadClickableLayer } from "../utils/mapLayers"; // <-- importa esta función
 
 const loadImageBitmap = (src: string): Promise<ImageBitmap> => {
   return new Promise((resolve, reject) => {
@@ -34,6 +35,14 @@ export const useMapInitialization = (
     await loadAndAddImage("stop-sign", stopSign);
     await loadAndAddImage("yield-sign", yieldSign);
     await loadAndAddImage("roundabout-sign", roundaboutSign);
+
+    // ✅ Asegúrate de añadir la capa justo aquí:
+    if (map.isStyleLoaded()) {
+      addRoadClickableLayer(map);
+    } else {
+      map.on("load", () => addRoadClickableLayer(map));
+    }
+
   }, [setMapInstance, mapRef]);
 
   return { onMapReady };

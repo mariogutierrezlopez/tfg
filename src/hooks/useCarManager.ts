@@ -3,6 +3,8 @@ import mapboxgl from "mapbox-gl";
 import { CarAgent } from "../logic/agents/CarAgents";
 import { createCarIcon, addCarMarker } from "../utils/carUtils";
 import { fetchRouteFrom } from "../utils/routeUtils";
+import { TrafficElement } from "../utils/types";
+
 
 export const useCarManager = (
   mapInstance: mapboxgl.Map | null,
@@ -19,7 +21,12 @@ export const useCarManager = (
   destinationPinRef: React.RefObject<mapboxgl.Marker | null>,
   token: string,
   routeData: any,
-) => {
+  handleRouteCalculation: (
+    origin: [number, number],
+    destination: [number, number]
+  ) => Promise<{ routeData: any; trafficRules: TrafficElement[] } | null>,
+  setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>
+)=> {
   const startCarAnimation = useCallback((coords?: [number, number][]) => {
     const points = coords ?? routeData?.coordinates;
     if (!points || !mapInstance) return;
@@ -94,7 +101,18 @@ export const useCarManager = (
       return;
     }
 
-    await addCarMarker(coord, mapInstance!, selectedCarType, destinationCoords, agentsRef, setSelectedCarId, token);
+    await addCarMarker(
+      coord,
+      mapInstance!,
+      selectedCarType,
+      destinationCoords,
+      agentsRef,
+      setSelectedCarId,
+      token,
+      handleRouteCalculation,
+      setTrafficRules
+    );
+    
   }, [
     agentsRef,
     carPendingRouteChange,

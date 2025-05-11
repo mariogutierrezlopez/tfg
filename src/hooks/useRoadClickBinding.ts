@@ -7,13 +7,22 @@ export const useRoadClickBinding = (
   deps: any[] = []
 ) => {
   useEffect(() => {
-    if (!mapInstance?.getLayer("roads-clickable-layer")) return;
+    if (!mapInstance) return;
 
-    mapInstance.off("click", "roads-clickable-layer", handleRoadClick);
-    mapInstance.on("click", "roads-clickable-layer", handleRoadClick);
+    const layers = ["roads-clickable-layer", "route-clickable-layer"]; // ambas capas
+    layers.forEach(layer => {
+      if (mapInstance.getLayer(layer)) {
+        mapInstance.off("click", layer, handleRoadClick);
+        mapInstance.on("click", layer, handleRoadClick);
+      }
+    });
 
     return () => {
-      mapInstance?.off("click", "roads-clickable-layer", handleRoadClick);
+      layers.forEach(layer => {
+        if (mapInstance.getLayer(layer)) {
+          mapInstance.off("click", layer, handleRoadClick);
+        }
+      });
     };
   }, [mapInstance, handleRoadClick, ...deps]);
 };

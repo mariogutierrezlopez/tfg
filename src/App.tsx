@@ -70,11 +70,23 @@ const App: React.FC = () => {
     trafficRules,
     map: mapRef.current,
     isPlayingRef,
+    speedRef,
   });
 
   const [selectedCarType, setSelectedCarType] = useState<CarOption>(
     carOptions[0]
   );
+
+  const { handleRouteCalculation } = useRouteCalculation({
+    originCoords,
+    destinationCoords,
+    setRouteStatus,
+    setTrafficRules,
+    setRouteData,
+    setShowPostRouteView,
+    mapRef,
+    token: mapboxToken,
+  });
 
   const { startCarAnimation, handleRoadClick } = useCarManager(
     mapInstance,
@@ -90,7 +102,9 @@ const App: React.FC = () => {
     carPendingRouteChange,
     destinationPinRef,
     mapboxToken,
-    routeData
+    routeData,
+    handleRouteCalculation,
+    setTrafficRules 
   );
 
   useEffect(() => {
@@ -109,17 +123,6 @@ const App: React.FC = () => {
     selectedCarType,
     carPendingRouteChange,
   ]);
-
-  const { handleRouteCalculation } = useRouteCalculation({
-    originCoords,
-    destinationCoords,
-    setRouteStatus,
-    setTrafficRules,
-    setRouteData,
-    setShowPostRouteView,
-    mapRef,
-    token: mapboxToken,
-  });
 
   useCleanOnUnmount(mapInstance);
   useManualPointSelection(

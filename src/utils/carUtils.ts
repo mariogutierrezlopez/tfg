@@ -2,7 +2,7 @@ import * as mapboxgl from "mapbox-gl";
 import { CarAgent } from "../logic/agents/CarAgents";
 import carIcon from "../assets/car-top-view.png";
 import { fetchRouteFrom } from "./routeUtils";
-
+import { TrafficElement } from "./types";
 type CarOption = {
   id: string;
   name: string;
@@ -52,16 +52,39 @@ export const addCarMarker = async (
   destinationCoords: [number, number] | null,
   agentsRef: React.MutableRefObject<CarAgent[]>,
   setSelectedCarId: (id: string) => void,
-  token: string
+  token: string,
+  handleRouteCalculation: (
+    origin: [number, number],
+    destination: [number, number],
+    options?: { skipFitBounds?: boolean }
+  ) => Promise<{
+    routeData: any;
+    trafficRules: TrafficElement[];
+  } | null>,  
+  setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>
 ) => {
   const fallbackDest: [number, number] = [coord[0] + 0.01, coord[1] + 0.01];
   const destination = destinationCoords ?? fallbackDest;
-  const route = await fetchRouteFrom(coord, destination, token);
-  const stepSpeeds = route?.stepSpeeds ?? [];
-  if (!route) return;
 
+  const result = await handleRouteCalculation(coord, destination, { skipFitBounds: true });
+  if (!result) return;
+
+  const { routeData, trafficRules: newRules } = result;
+
+  setTrafficRules(prev => {
+    const ids = new Set(prev.map(r => r.id));
+    const merged = [...prev];
   
-
+    for (const rule of newRules) {
+      if (!ids.has(rule.id)) {
+        merged.push(rule);
+        ids.add(rule.id);
+      }
+    }
+  
+    return merged;
+  });
+  
   const agentId = crypto.randomUUID();
   const marker = new mapboxgl.Marker({
     element: createCarIcon(selectedCarType.image, selectedCarType.id, agentId, () => {
@@ -72,9 +95,9 @@ export const addCarMarker = async (
     anchor: "center",
   }).setLngLat(coord).addTo(map);
 
-  const agent = new CarAgent(agentId, coord, route.coordinates, marker, selectedCarType, stepSpeeds);
-
+  const agent = new CarAgent(agentId, coord, routeData.coordinates, marker, selectedCarType, routeData.stepSpeeds);
   agent.targetSpeed = agent.maxSpeed;
+
   agentsRef.current.push(agent);
 };
 

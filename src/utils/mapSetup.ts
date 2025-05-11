@@ -23,8 +23,9 @@ export const drawRoundaboutEntryZone = (
       data: circleFeature,
     });
 
+    // Capa circular para mostrar área de influencia
     map.addLayer({
-      id: id,
+      id: `${id}-circle`,
       type: "circle",
       source: id,
       paint: {
@@ -39,8 +40,21 @@ export const drawRoundaboutEntryZone = (
         "circle-opacity": 0.25,
       },
     });
+
+    // Añade una capa simbólica (icono) para señal visual explícita
+    map.addLayer({
+      id: `${id}-icon`,
+      type: "symbol",
+      source: id,
+      layout: {
+        "icon-image": "roundabout-sign", // asegúrate que este icono esté cargado previamente
+        "icon-size": 0.3,
+        "icon-allow-overlap": true,
+      },
+    });
   } else {
     const source = map.getSource(id) as mapboxgl.GeoJSONSource;
     source.setData(circleFeature);
   }
 };
+

@@ -56,20 +56,21 @@ const CarStatsPanel: React.FC<Props> = ({
 
       // Velocidad real y distancia acumulada
       if (prevPos.current) {
-        // Obtener distancia EN METROS
         const distMeters = distance(
           turfPoint(prevPos.current),
           turfPoint(pos),
           { units: "meters" }
         );
 
-        // deltaTime en segundos REALES
         const deltaTime = (now - lastUpdate.current) / 1000;
 
         if (deltaTime > 0) {
-          const speedMps = distMeters / deltaTime; // m/s
-          setRealSpeed(speedMps * 3.6); // km/h
+          const speedMps = distMeters / deltaTime;
+          setRealSpeed(speedMps * 3.6);
         }
+
+        // ✅ Sumar al total (en kilómetros)
+        setTotalDistance((prev) => prev + distMeters / 1000);
       }
 
       prevPos.current = pos;
