@@ -1,40 +1,100 @@
-.car-selector-panel {
+/* =========================================
+   PANEL SELECTOR DE VEHÍCULOS (parte inferior)
+   ========================================= */
+
+   .car-selector-panel {
     position: absolute;
-    bottom: 0;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.95);
+    bottom: 1rem;                /* flotante, separado del borde */
+    left: 50%;
+    transform: translateX(-50%);
+  
     display: flex;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-top: 1px solid #ddd;
+    gap: 1.25rem;                /* separación entre opciones */
+    padding: 0.75rem 1.25rem;
+  
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(6px);  /* sutil glass-morphism */
+    border-radius: 20px;
+    box-shadow:
+      0 4px 6px  rgba(0, 0, 0, 0.10),
+      0 8px 20px rgba(0, 0, 0, 0.15);
+  
     z-index: 1000;
+    pointer-events: auto;
   }
   
+  /* =========================================
+     OPCIONES DE COCHE
+     ========================================= */
+  
   .car-option {
+    --size: 68px;                /* diámetro del icono circular */
+  
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 0.35rem;
     cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 8px;
-    transition: background 0.2s ease;
+  
+    border: none;
+    background: transparent;
+    padding: 0;                  /* eliminamos padding del wrapper */
+  
+    transition: transform 120ms ease;
+  }
+  
+  /* círculo contenedor del icono */
+  .car-icon-wrapper {
+    width: var(--size);
+    height: var(--size);
+    background: #ffffff;
+    border-radius: 50%;
+  
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  
+    box-shadow:
+      0 4px 6px  rgba(0, 0, 0, 0.10),
+      0 8px 20px rgba(0, 0, 0, 0.15);
+  
+    transition: background-color 120ms ease;
   }
   
   .car-option:hover {
-    background: #f0f0f0;
+    transform: translateY(-2px);
   }
   
-  .car-option img {
-    height: 40px;
-    margin-bottom: 0.5rem;
+  /* imagen (rotada) */
+  .car-icon {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
     transform: rotate(90deg);
-    transition: transform 0.3s ease;
+    transition: filter 120ms ease;
   }
   
-  
-  .car-option.selected {
-    background-color: #d0ebff;
-    border: 2px solid #339af0;
+  /* nombre */
+  .car-option span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #000000;
   }
   
+  /* ===== ESTADO SELECCIONADO ===== */
+  .car-option.selected .car-icon-wrapper {
+    background: #1e90ff;
+  }
+  
+  .car-option.selected span {
+    color: #1e90ff;
+  }
+  
+  .car-option.selected .car-icon {
+    filter: brightness(0) invert(1); /* icono blanco sobre fondo azul */
+  }
+  /* ===== ESTADO DESHABILITADO ===== */
+  .car-option.disabled {
+    pointer-events: none;          /* deshabilitar clics */
+    opacity: 0.5;                 /* atenuar */
+  }  

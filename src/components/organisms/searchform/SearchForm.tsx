@@ -74,25 +74,27 @@ const SearchForm: React.FC<Props> = ({
       {/* Tabs */}
       <div className="tab-buttons" ref={tabRef}>
         <button
-          className={`btn ${activeTab === "search" ? "btn-primary" : ""}`}
+          className={`tab-btn ${activeTab === "search" ? "tab-btn--active" : ""}`}
           onClick={() => setInputMode("search")}
         >
           Origen/Destino
         </button>
+
         <button
-          className={`btn ${activeTab === "manual" ? "btn-primary" : ""}`}
+          className={`tab-btn ${activeTab === "manual" ? "tab-btn--active" : ""}`}
           onClick={() => setInputMode("manual")}
         >
           Selección en mapa
         </button>
+
         <button
-          className={`btn ${activeTab === "csv" ? "btn-primary" : ""}`}
+          className={`tab-btn ${activeTab === "csv" ? "tab-btn--active" : ""}`}
           onClick={() => setInputMode("csv")}
         >
           Importar CSV
         </button>
       </div>
-
+  
       {/* Tab: Búsqueda Origen/Destino */}
       {activeTab === "search" && (
         <div className="search-form-inner">
@@ -108,7 +110,7 @@ const SearchForm: React.FC<Props> = ({
               if (feature) handleSearchSelection(feature, true);
             }}
           />
-
+  
           <label className="form-label">Destino</label>
           <SearchBox
             accessToken={import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN}
@@ -121,29 +123,32 @@ const SearchForm: React.FC<Props> = ({
               if (feature) handleSearchSelection(feature, false);
             }}
           />
-
+  
           <div className="search-form-buttons">
-            <button className="btn btn-outline-secondary" onClick={handleSwap}>
+            <button
+              className="btn btn-outline-secondary"
+              onClick={handleSwap}
+            >
               Intercambiar
             </button>
           </div>
         </div>
       )}
-
-      {/* Tab: Selección en mapa */}
+  
+      {/* Tab: Selección manual */}
       {activeTab === "manual" && (
         <div className="search-form-inner text-muted">
           <p className="mb-2">
             Selecciona punto A y B directamente en el mapa. Usa{" "}
-            <strong>Shift + clic</strong> para seleccionar cada uno.
+            <strong>Shift + clic</strong> para marcar cada uno.
           </p>
           <p>
-            Esta funcionalidad se implementa con listeners en el mapa (no hay
-            inputs aquí).
+            Esta funcionalidad se implementa con listeners en el mapa
+            (no hay inputs aquí).
           </p>
         </div>
       )}
-
+  
       {/* Tab: Importar CSV */}
       {activeTab === "csv" && (
         <div className="search-form-inner">
@@ -151,7 +156,7 @@ const SearchForm: React.FC<Props> = ({
             Importar archivo CSV
             <input type="file" onChange={onFileUpload} />
           </label>
-
+  
           <div className="csv-import-container mt-3">
             <p className="mb-0 d-inline">
               Puedes importar un archivo CSV o explorar la{" "}
@@ -166,19 +171,19 @@ const SearchForm: React.FC<Props> = ({
           </div>
         </div>
       )}
-
-      {/* Botón de calcular ruta (oculto en modo CSV) */}
+  
+      {/* Botón calcular ruta (oculto en modo CSV) */}
       {activeTab !== "csv" && (
         <button
-          className="btn btn-primary mt-3 w-100"
-          onClick={() => onCalculateRoute()}
-
-        >
-          Calcular ruta
-        </button>
+        className="btn btn-primary mt-3 w-100"
+        onClick={() => onCalculateRoute()}   
+      >
+        Calcular ruta
+      </button>
       )}
     </div>
   );
+  
 };
 
 export default SearchForm;

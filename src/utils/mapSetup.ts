@@ -48,7 +48,7 @@ export const drawRoundaboutEntryZone = (
       source: id,
       layout: {
         "icon-image": "roundabout-sign", // asegúrate que este icono esté cargado previamente
-        "icon-size": 0.3,
+        "icon-size": 0.1,
         "icon-allow-overlap": true,
       },
     });

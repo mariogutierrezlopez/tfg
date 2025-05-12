@@ -1,0 +1,84 @@
+/* —————————————————  CONTENEDOR  ————————————————— */
+.home-container { font-family: system-ui, sans-serif; color: #111827; }
+
+/* —————————————————  NAVBAR  ————————————————— */
+.navbar-custom {
+  position: fixed; inset: 0 0 auto 0; z-index: 9999;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.85rem 1.25rem;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.navbar-title { font-weight: 700; font-size: 1.05rem; }
+.btn-primary {            /* reutilizado en toda la app */
+  background: #1e90ff; color: #ffffff; border: none; border-radius: 12px;
+  padding: 0.45rem 1rem; font-size: 0.85rem; font-weight: 500;
+  cursor: pointer; transition: background 120ms ease, transform 120ms ease;
+}
+.btn-primary:hover   { background: #1878d8; transform: translateY(-1px); }
+
+/* —————————————————  HERO  ————————————————— */
+.hero-section {
+  margin-top: 64px;       /* alto de la navbar */
+  text-align: center; padding: 4rem 1rem 3.5rem;
+  max-width: 900px; margin-inline: auto;
+}
+.hero-title   { font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 700; margin-bottom: 0.6rem; }
+.hero-subtitle{ font-size: 0.96rem; color: #4b5563; margin-bottom: 2rem; }
+.hero-image   {
+  width: 100%; border-radius: 20px;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.10), 0 12px 26px rgba(0,0,0,0.15);
+}
+
+/* —————————————————  SECCIÓN FUNCIONALIDADES  ————————————————— */
+.funciones-section {
+    padding: 3.5rem 1rem;
+    max-width: 1200px;
+    margin-inline: auto;
+    overflow: visible;
+}
+.section-title  { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+/* ───────────────────────────────
+   CONTENEDOR DE LAS TARJETAS
+   ─────────────────────────────── */
+   .funciones-scroll {
+    display: flex;
+    overflow-x: auto;     /* scroll solo horizontal */
+    overflow-y: visible;  /* deja salir la sombra ⇒ no se corta */
+    gap: 1.25rem;
+    padding-bottom: 2.5rem; /* espacio para la sombra inferior */
+    margin-bottom: -2.5rem; /* evita que se genere scroll vertical */
+    padding-inline: 1rem;   /* espacio para que la sombra respire */
+    margin-inline: -1rem;   /* compensamos para que la fila siga alineada */
+
+  }
+  
+  /* (opcional) Si notas que sigue apareciendo una barra vertical microscópica
+     en algunos navegadores, forzamos su ocultación: */
+  .funciones-scroll::-webkit-scrollbar:vertical { display: none; }
+  .funciones-scroll { scrollbar-width: thin; }   /* Firefox – solo barra horiz. */
+  
+
+.card-funcion {
+  min-width: 260px; flex-shrink: 0; background: #ffffff;
+  border-radius: 18px; overflow: hidden;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.12);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.card-funcion:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.10), 0 12px 24px rgba(0,0,0,0.14);
+  z-index: 1;
+}
+.card-img      { width: 100%; height: 150px; object-fit: cover; }
+.card-title    { font-weight: 600; font-size: 1rem; margin: 0.8rem 1rem 0.35rem; }
+.card-desc     { font-size: 0.85rem; color: #4b5563; margin: 0 1rem 1rem; }
+
+/* —————————————————  ANIMACIÓN FADE  ————————————————— */
+.fade-in { opacity: 0; transform: translateY(12px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+
+/* —————————————————  NO-SCROLL EN MONTAJE  ————————————————— */
+body.noscroll { overflow: hidden; }

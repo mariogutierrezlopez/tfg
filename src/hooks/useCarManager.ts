@@ -81,6 +81,18 @@ export const useCarManager = (
       if (!newRoute) return;
 
       car.route = newRoute;
+      const result = await fetchRouteFrom(car.position, coord, token);
+      if (!result) return;
+
+      const { routeData, trafficRules } = result;
+
+      //Sustituir ruta y eliminar indices
+      car.route = routeData.coordinates;
+      car.stepSpeeds = routeData.stepSpeeds;
+      car.currentStepSpeed = car.stepSpeeds[0] ?? car.maxSpeed;
+      car.prevPosition = [...car.position];
+      setTrafficRules(trafficRules);
+
       setCarPendingRouteChange(null);
 
       if (destinationPinRef.current) destinationPinRef.current.remove();

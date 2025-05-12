@@ -67,45 +67,63 @@ const ScenarioGalleryModal: React.FC<Props> = ({ onClose, onSelectScenario }) =>
   return createPortal(
     <div className="modal-overlay">
       <div className="modal-content">
+        {/* ───── Cabecera ───── */}
         <div className="modal-header">
           <h2>{showForm ? "Nuevo escenario" : "Galería de escenarios"}</h2>
           <button onClick={onClose} className="close-btn">×</button>
         </div>
-
+  
+        {/* ───── Formulario o galería según estado ───── */}
         {showForm ? (
           <form className="scenario-form" onSubmit={handleFormSubmit}>
             <div className="form-group">
               <label>Título</label>
               <input name="title" type="text" required />
             </div>
-
+  
             <div className="form-group">
               <label>Descripción</label>
               <input name="description" type="text" required />
             </div>
-
+  
             <div className="form-group">
               <label>Archivo CSV</label>
               <input name="csv" type="file" accept=".csv" required />
             </div>
-
+  
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary">Guardar escenario</button>
-              <button type="button" className="btn btn-outline-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
+              <button type="submit" className="btn btn-primary">
+                Guardar escenario
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => setShowForm(false)}
+              >
+                Cancelar
+              </button>
             </div>
           </form>
         ) : (
           <div className="scenario-grid">
-            <div className="scenario-card add-card full-width" onClick={() => setShowForm(true)}>
+            {/* Tarjeta para crear nuevo */}
+            <div
+              className="scenario-card add-card"
+              onClick={() => setShowForm(true)}
+            >
               <div className="add-icon">＋</div>
               <p>Crear nuevo escenario</p>
             </div>
-
-            {scenarios.map((scenario) => (
-              <div key={scenario.id} className="scenario-card">
-                <h4>{scenario.title}</h4>
-                <p className="scenario-desc">{scenario.description}</p>
-                <button className="btn btn-sm btn-primary" onClick={() => onSelectScenario(scenario.csv)}>
+  
+            {/* Tarjetas de escenarios existentes */}
+            {scenarios.map((s) => (
+              <div key={s.id} className="scenario-card">
+                <h4>{s.title}</h4>
+                <p className="scenario-desc">{s.description}</p>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => onSelectScenario(s.csv)}
+                >
                   Cargar
                 </button>
               </div>
@@ -116,6 +134,7 @@ const ScenarioGalleryModal: React.FC<Props> = ({ onClose, onSelectScenario }) =>
     </div>,
     document.getElementById("modal-root")!
   );
+  
 };
 
 export default ScenarioGalleryModal;

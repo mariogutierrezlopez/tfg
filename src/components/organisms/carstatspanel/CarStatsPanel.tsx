@@ -4,6 +4,7 @@ import distance from "@turf/distance";
 import { point as turfPoint } from "@turf/helpers";
 import { CarAgent } from "../../../logic/agents/CarAgents";
 import mapboxgl from "mapbox-gl";
+import { FaTimes } from "react-icons/fa";
 
 type Props = {
   car: CarAgent;
@@ -101,27 +102,16 @@ const CarStatsPanel: React.FC<Props> = ({
   console.log("StepSpeeds:", car.stepSpeeds);
   return (
     <div className="car-stats-panel">
-      <div className="car-id">Coche</div>
-      <button className="close-btn" onClick={onClose}>
-        x
-      </button>
-      <button
-        className="change-route-btn"
-        onClick={() => onRequestRouteChange(car.id)}
-      >
-        Cambiar ruta
-      </button>
-      <button
-        className={`btn ${
-          keepCentered ? "btn-primary" : "btn-outline-secondary"
-        } mt-2`}
-        onClick={() => setKeepCentered((prev) => !prev)}
-      >
-        {keepCentered
-          ? "Centrado automático activado"
-          : "Activar centrado automático"}
-      </button>
+      {/* ===== Cabecera ===== */}
+      <div className="car-stats-header">
+        <div className="car-id">Coche {car.id}</div>
+        <button className="close-btn" onClick={onClose}>
+        <FaTimes size={12} />
+        </button>
+      </div>
 
+
+       {/* ===== Lista ===== */}
       <ul>
         <li>
           <strong>Velocidad:</strong> {realSpeed.toFixed(1)} km/h
@@ -156,6 +146,24 @@ const CarStatsPanel: React.FC<Props> = ({
           </li>
         )}
       </ul>
+
+      {/* ===== Botón de ruta ===== */}
+      <button
+        className="panel-btn"
+        onClick={() => onRequestRouteChange(car.id)}
+      >
+        Cambiar ruta
+      </button>
+
+      <button
+        className={`panel-btn ${
+          keepCentered ? "panel-btn--primary" : ""
+        }`}
+        onClick={() => setKeepCentered((prev) => !prev)}
+      >
+        {keepCentered ? "Centrado ON" : "Centrar vehículo"}
+      </button>
+      
     </div>
   );
 };

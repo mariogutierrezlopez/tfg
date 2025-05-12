@@ -1,0 +1,41 @@
+/* ===== Botón exportar ===== */
+.list-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75rem;
+  }
+  
+  .export-btn {
+    --btn-size: 56px;
+  
+    width: var(--btn-size);
+    height: var(--btn-size);
+    background: #ffffff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+  
+    box-shadow:
+      0 4px 6px  rgba(0, 0, 0, 0.10),
+      0 8px 20px rgba(0, 0, 0, 0.15);
+  
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  
+    transition: transform 120ms ease;
+  }
+  
+  .export-btn:hover {
+    transform: translateY(-2px);
+  }
+  
+  .export-btn:active {
+    transform: translateY(1px) scale(0.96);
+  }
+  
+  .export-icon {
+    font-size: 28px;
+    color: #000000;
+    pointer-events: none;
+  }

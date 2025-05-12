@@ -1,9 +1,11 @@
+
 import React from "react";
 import { point, lineString } from "@turf/helpers";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import mapboxgl from "mapbox-gl";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import type { Feature, Polygon } from "geojson";
+import "./RouteActionPanel.css";
 
 interface Props {
   mapRef: React.RefObject<mapboxgl.Map>;
@@ -98,10 +100,13 @@ const RouteActionsPanel: React.FC<Props> = ({
   };
 
   return (
-    <div className="post-route-view">
+    <div className="route-actions-panel">
+      {/* ===== Botones toggle de modo ===== */}
       <div className="mode-buttons">
         <button
-          className={`btn ${mode === "full" ? "btn-primary" : "btn-outline-primary"}`}
+          className={`toggle-btn ${
+            mode === "full" ? "toggle-btn--active" : ""
+          }`}
           onClick={() => {
             setMode("full");
             drawRef.current?.deleteAll();
@@ -109,8 +114,11 @@ const RouteActionsPanel: React.FC<Props> = ({
         >
           Vista completa
         </button>
+
         <button
-          className={`btn ${mode === "area" ? "btn-primary" : "btn-outline-primary"}`}
+          className={`toggle-btn ${
+            mode === "area" ? "toggle-btn--active" : ""
+          }`}
           onClick={() => {
             setMode("area");
             drawRef.current?.deleteAll();
@@ -120,8 +128,8 @@ const RouteActionsPanel: React.FC<Props> = ({
         </button>
       </div>
 
-
-      <button className="btn btn-success mt-2" onClick={handleSubmit}>
+      {/* ===== Botón enviar ===== */}
+      <button className="submit-btn" onClick={handleSubmit}>
         Enviar selección
       </button>
     </div>

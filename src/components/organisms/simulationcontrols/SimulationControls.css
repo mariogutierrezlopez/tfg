@@ -1,22 +1,66 @@
+/* ===============================
+   CONTROLES DE SIMULACIÓN
+   =============================== */
+
+/* Contenedor: arriba a la derecha */
 .simulation-controls {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background-color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-    display: flex;
-    gap: 0.5rem;
-    z-index: 999;
-  }
-  
-  .simulation-controls button {
-    padding: 0.4rem 0.8rem;
-    border: none;
-    background-color: #007AFF;
-    color: white;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
+  position: absolute;
+  top: 0.75rem;          /* distancia superior */
+  right: 0.75rem;        /* pegado al borde derecho */
+  display: flex;
+  gap: 1rem;             /* separación entre botones */
+  z-index: 999;
+  pointer-events: auto;
+}
+
+/* Botón circular blanco, sin borde sólido */
+.control-button {
+  --btn-size: 56px;      /* diámetro (ajusta si lo quieres aún menor) */
+
+  width: var(--btn-size);
+  height: var(--btn-size);
+  background: #ffffff;
+  border: none;          /* <-- elimina borde negro */
+  outline: none;         /* <-- elimina outline por defecto */
+  border-radius: 50%;
+  cursor: pointer;
+
+  /* sombra doble para dar profundidad */
+  box-shadow:
+    0 4px 6px  rgba(0, 0, 0, 0.10),
+    0 8px 18px rgba(0, 0, 0, 0.15);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+/* efecto “flotante” al pasar el ratón */
+.control-button:hover {
+  transform: translateY(-2px);
+}
+
+/* efecto pulsado */
+.control-button:active {
+  transform: translateY(1px) scale(0.96);
+  box-shadow:
+    0 2px 4px  rgba(0, 0, 0, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+/* anillo de accesibilidad cuando recibe foco con teclado */
+.control-button:focus-visible {
+  box-shadow:
+    0 0 0 3px #1e90ff,   /* ring azul */
+    0 4px 6px  rgba(0, 0, 0, 0.10),
+    0 8px 18px rgba(0, 0, 0, 0.15);
+}
+
+/* Icono centrado */
+.control-icon {
+  font-size: 28px;       /* reducido acorde al nuevo botón */
+  color: #000000;
+  pointer-events: none;  /* evita que el icono intercepte clics */
+}

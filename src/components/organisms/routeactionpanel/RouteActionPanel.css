@@ -1,0 +1,90 @@
+/* =========================================
+   PANEL DE ACCIONES DE RUTA
+   ========================================= */
+
+   .route-actions-panel {
+    position: absolute;
+    bottom: 1rem;               /* debajo de los controles circulares */
+    left: 1rem;
+  
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1rem 1.5rem;
+    width: 260px;
+  
+    box-shadow:
+      0 4px 6px  rgba(0, 0, 0, 0.10),
+      0 8px 20px rgba(0, 0, 0, 0.15);
+  
+    font-family: system-ui, sans-serif;
+    z-index: 996;
+  }
+  
+  /* =========================================
+     BOTONES DE MODO (toggle)
+     ========================================= */
+  
+  .mode-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .toggle-btn {
+    flex: 1;
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    border-radius: 12px;
+    padding: 0.5rem 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.25rem 1rem;
+  
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.10),
+      0 4px 10px rgba(0, 0, 0, 0.14);
+  
+    transition: background-color 120ms ease, transform 120ms ease, color 120ms ease;
+  }
+  
+  .toggle-btn:hover {
+    transform: translateY(-1px);
+  }
+  
+  .toggle-btn--active {
+    background: #1e90ff;
+    color: #ffffff;
+  }
+  
+  /* =========================================
+     BOTÓN ENVIAR
+     ========================================= */
+  
+  .submit-btn {
+    width: 100%;
+    background: #1e90ff;
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    padding: 0.6rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  
+    box-shadow:
+      0 3px 5px rgba(0, 0, 0, 0.10),
+      0 6px 14px rgba(0, 0, 0, 0.16);
+  
+    transition: transform 120ms ease;
+  }
+  
+  .submit-btn:hover {
+    transform: translateY(-2px);
+  }
+  
+  .submit-btn:active {
+    transform: translateY(1px) scale(0.97);
+  }
+  
