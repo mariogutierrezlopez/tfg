@@ -4,7 +4,9 @@ import { CarAgent } from "../logic/agents/CarAgents";
 import { createCarIcon, addCarMarker } from "../utils/carUtils";
 import { fetchRouteFrom } from "../utils/routeUtils";
 import { TrafficElement } from "../utils/types";
-
+import { mergeTrafficRules } from "../utils/mergeTrafficRules";
+import { attachMeterScaling } from "../utils/attachMeterScaling";
+import { vehicleSizes } from "../utils/types";
 
 export const useCarManager = (
   mapInstance: mapboxgl.Map | null,
@@ -30,16 +32,31 @@ export const useCarManager = (
   const startCarAnimation = useCallback((coords?: [number, number][]) => {
     const points = coords ?? routeData?.coordinates;
     if (!points || !mapInstance) return;
-
+  
+    /* ─── dimensiones reales ─── */
+    const sizeCfg = vehicleSizes[selectedCarType.id as keyof typeof vehicleSizes] ?? { w: 36, h: 60 };
+    const wM = (sizeCfg as any).wM ?? sizeCfg.w / 20;   // 5 cm/px estimado
+    const lM = (sizeCfg as any).lM ?? sizeCfg.h / 20;
+  
+    /* ─── marker ─── */
     const marker = new mapboxgl.Marker({
-      element: createCarIcon(selectedCarType.image, selectedCarType.id, "main-car", () => {
-        setSelectedCarId("main-car");
-      }),
+      element: createCarIcon(
+        selectedCarType.image,
+        selectedCarType.id,
+        "main-car",
+        () => setSelectedCarId("main-car")
+      ),
       rotationAlignment: "map",
-      pitchAlignment: "map",
+      pitchAlignment:    "map",
       anchor: "center",
-    }).setLngLat(points[0]).addTo(mapInstance);
-
+    })
+      .setLngLat(points[0])
+      .addTo(mapInstance);
+  
+    /* escalado físico */
+    const detach = attachMeterScaling(mapInstance, marker, wM, lM);
+  
+    /* ─── agente ─── */
     const mainCar = new CarAgent(
       "main-car",
       points[0],
@@ -48,15 +65,24 @@ export const useCarManager = (
       selectedCarType,
       routeData?.stepSpeeds ?? []
     );
-    
-
+    (mainCar as any).detachZoom = detach;   // para cleanup
+  
     agentsRef.current = agentsRef.current.filter(a => a.id !== "main-car");
     agentsRef.current.push(mainCar);
-
+  
     setShowCarSelector(true);
     setShowSimulationControls(true);
     setSelectionSent(true);
-  }, [mapInstance, selectedCarType, routeData]);
+  }, [
+    mapInstance,
+    selectedCarType,
+    routeData,
+    setSelectedCarId,
+    setShowCarSelector,
+    setShowSimulationControls,
+    setSelectionSent,
+    agentsRef,
+  ]);
 
   const handleRoadClick = useCallback(async (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
     const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
@@ -77,10 +103,6 @@ export const useCarManager = (
       const car = agentsRef.current.find(a => a.id === carPendingRouteChange);
       if (!car) return;
 
-      const newRoute = await fetchRouteFrom(car.position, coord, token);
-      if (!newRoute) return;
-
-      car.route = newRoute;
       const result = await fetchRouteFrom(car.position, coord, token);
       if (!result) return;
 
@@ -88,10 +110,12 @@ export const useCarManager = (
 
       //Sustituir ruta y eliminar indices
       car.route = routeData.coordinates;
+      car.position = routeData.coordinates[0];
+      car.marker.setLngLat(car.position);
+      car.prevPosition = [...car.position];
       car.stepSpeeds = routeData.stepSpeeds;
       car.currentStepSpeed = car.stepSpeeds[0] ?? car.maxSpeed;
-      car.prevPosition = [...car.position];
-      setTrafficRules(trafficRules);
+      setTrafficRules(prev => mergeTrafficRules(prev, trafficRules));
 
       setCarPendingRouteChange(null);
 

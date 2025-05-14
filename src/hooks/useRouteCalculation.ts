@@ -5,6 +5,7 @@ import { TrafficElement } from "../utils/types";
 import { drawRoundaboutEntryZone } from "../utils/mapSetup";
 import { resampleRoute } from "../utils/resampleRoute";
 import distance from "@turf/distance";
+import { mergeTrafficRules } from "../utils/mergeTrafficRules";
 
 export const useRouteCalculation = ({
   originCoords,
@@ -19,7 +20,7 @@ export const useRouteCalculation = ({
   originCoords: [number, number] | null;
   destinationCoords: [number, number] | null;
   setRouteStatus: (status: string | null) => void;
-  setTrafficRules: (rules: TrafficElement[]) => void;
+  setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>;
   setRouteData: (data: any) => void;
   setShowPostRouteView: (show: boolean) => void;
   mapRef: React.RefObject<mapboxgl.Map>;
@@ -191,16 +192,22 @@ export const useRouteCalculation = ({
       });
 
       const map = mapRef.current;
-      if (!map) return;
+      if (!map) return null;
 
-      setTrafficRules(adjustedRules);
-
-      adjustedRules.forEach((rule, i) => {
-        if (rule.type === "roundabout") {
-          drawRoundaboutEntryZone(map, rule, `roundabout-zone-${i}`);
-        }
+      setTrafficRules(prev => {
+        const merged = mergeTrafficRules(prev, adjustedRules);
+    
+        merged.forEach(rule => {
+          if (rule.type === "roundabout") {
+            const layerId = `${rule.id}-zone`;
+            if (!map.getLayer(layerId)) {
+              drawRoundaboutEntryZone(map, rule, layerId);
+            }
+          }
+        });
+    
+        return merged;          // <<< el estado queda con todas las reglas
       });
-      console.log("🚗 Velocidades extraídas del route:", stepSpeeds);
       // 🧠 Guardar todo en el routeData para que lo consuma el coche
       setRouteData({
         ...route,

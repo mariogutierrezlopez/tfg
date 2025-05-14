@@ -16,7 +16,7 @@ export const drawRoundaboutEntryZone = (
   };
 
   const radiusMeters = roundabout.radius + 15;
-
+  if (map.getLayer(id)) return;        // no la añadas de nuevo
   if (!map.getSource(id)) {
     map.addSource(id, {
       type: "geojson",

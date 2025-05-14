@@ -140,6 +140,30 @@ const SimulatorApp: React.FC = () => {
   );
   const { onMapReady } = useMapInitialization(setMapInstance, mapRef);
 
+
+  const deleteCar = (carId: string) => {
+    const car = agentsRef.current.find(c => c.id === carId);
+    if (!car) return;
+  
+    /* 1 — Quitar marcador */
+    car.marker.remove();
+    agentsRef.current = agentsRef.current.filter(c => c.id !== carId);
+  
+    /* 2 — Eliminar capa y fuente de la ruta, si existen */
+    const map = mapRef.current;
+    if (map) {
+      const layerId  = `${carId}-route`;
+      const sourceId = `${carId}-route`;
+  
+      if (map.getLayer(layerId))  map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    }
+  
+    /* 3 — Cerrar panel si era el seleccionado */
+    if (selectedCarId === carId) setSelectedCarId(null);
+  };
+  
+
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
       <MapContainer onMapReady={onMapReady} />
@@ -287,6 +311,7 @@ const SimulatorApp: React.FC = () => {
                     "Haz clic en el mapa para elegir un nuevo destino para el coche."
                   );
                 }}
+                onDelete={deleteCar}
                 mapRef={mapRef}
               />
             )}

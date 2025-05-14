@@ -97,4 +97,4 @@
   .car-option.disabled {
     pointer-events: none;          /* deshabilitar clics */
     opacity: 0.5;                 /* atenuar */
-  }  
+  }   

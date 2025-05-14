@@ -1,8 +1,14 @@
+
+/* utils/carUtils.ts (bloque completo de la función) */
 import * as mapboxgl from "mapbox-gl";
 import { CarAgent } from "../logic/agents/CarAgents";
 import carIcon from "../assets/car-top-view.png";
-import { fetchRouteFrom } from "./routeUtils";
+// import { fetchRouteFrom } from "./routeUtils";
 import { TrafficElement } from "./types";
+import { attachMeterScaling } from "./attachMeterScaling";
+import { vehicleSizes } from "./types";
+import { mergeTrafficRules } from "./mergeTrafficRules";
+
 type CarOption = {
   id: string;
   name: string;
@@ -60,46 +66,59 @@ export const addCarMarker = async (
   ) => Promise<{
     routeData: any;
     trafficRules: TrafficElement[];
-  } | null>,  
+  } | null>,
   setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>
 ) => {
+  /* ---------- calcula ruta ---------- */
   const fallbackDest: [number, number] = [coord[0] + 0.01, coord[1] + 0.01];
   const destination = destinationCoords ?? fallbackDest;
 
-  const result = await handleRouteCalculation(coord, destination, { skipFitBounds: true });
+  const result = await handleRouteCalculation(coord, destination, {
+    skipFitBounds: true,
+  });
   if (!result) return;
 
   const { routeData, trafficRules: newRules } = result;
 
-  setTrafficRules(prev => {
-    const ids = new Set(prev.map(r => r.id));
-    const merged = [...prev];
-  
-    for (const rule of newRules) {
-      if (!ids.has(rule.id)) {
-        merged.push(rule);
-        ids.add(rule.id);
-      }
-    }
-  
-    return merged;
-  });
-  
+  /* ---------- fusiona reglas ---------- */
+  setTrafficRules(prev => mergeTrafficRules(prev, newRules));
+
+  /* ---------- marcador y agente ---------- */
   const agentId = crypto.randomUUID();
+  const start   = routeData.coordinates[0];                 // origen real
+
+  // const { w, h } = vehicleSizes[selectedCarType.id] ?? { w: 36, h: 60 };
+
   const marker = new mapboxgl.Marker({
-    element: createCarIcon(selectedCarType.image, selectedCarType.id, agentId, () => {
-      setSelectedCarId(agentId);
-    }),
+    element: createCarIcon(
+      selectedCarType.image,
+      selectedCarType.id,
+      agentId,
+      () => setSelectedCarId(agentId)
+    ),
     rotationAlignment: "map",
     pitchAlignment: "map",
     anchor: "center",
-  }).setLngLat(coord).addTo(map);
+  })
+    .setLngLat(start)
+    .addTo(map);
 
-  const agent = new CarAgent(agentId, coord, routeData.coordinates, marker, selectedCarType, routeData.stepSpeeds);
+  const { wM, lM } = (vehicleSizes as any)[selectedCarType.id] ?? { wM: 1.8, lM: 4.5 };
+  const detachZoom = attachMeterScaling(map, marker, wM, lM);
+  const agent = new CarAgent(
+    agentId,
+    start,
+    routeData.coordinates,
+    marker,
+    selectedCarType,
+    routeData.stepSpeeds
+  );
+  (agent as any).detachZoom = detachZoom;   // para limpiar al eliminar
   agent.targetSpeed = agent.maxSpeed;
 
   agentsRef.current.push(agent);
 };
+
 
 export const startCarAnimation = (
   coords: [number, number][] | undefined,
@@ -115,30 +134,47 @@ export const startCarAnimation = (
   const points = coords ?? routeData?.coordinates;
   if (!points) return;
 
+  const start = points[0];                                 // origen real
+  const { w, h } = vehicleSizes[selectedCarType.id] ?? { w: 36, h: 60 };
+
+  /* --------- marker --------- */
   const marker = new mapboxgl.Marker({
-    element: createCarIcon(selectedCarType.image, selectedCarType.id, "main-car", () => {
-      setSelectedCarId("main-car");
-    }),
+    element: createCarIcon(
+      selectedCarType.image,
+      selectedCarType.id,
+      "main-car",
+      () => setSelectedCarId("main-car")
+    ),
     rotationAlignment: "map",
     pitchAlignment: "map",
     anchor: "center",
-  }).setLngLat(points[0]).addTo(map);
-  console.log("📦 routeData al animar:", routeData);
+  })
+    .setLngLat(start)
+    .addTo(map);
+
+  /* escala dinámica con zoom */
+  const detachZoom = attachZoomScaling(map, marker, 16, w, h);
+
+  /* --------- agente --------- */
   const mainCar = new CarAgent(
     "main-car",
-    points[0],
+    start,
     points,
     marker,
     selectedCarType,
     routeData?.stepSpeeds ?? []
-  );  
-  agentsRef.current = agentsRef.current.filter((a) => a.id !== "main-car");
-  agentsRef.current.push(mainCar);
+  );
+  (mainCar as any).detachZoom = detachZoom;
 
+  agentsRef.current = agentsRef.current.filter(a => a.id !== "main-car");
+  agentsRef.current.push(mainCar);  
+
+  /* --------- UI --------- */
   setShowCarSelector(true);
   setShowSimulationControls(true);
   setSelectionSent(true);
 };
+
 
 export const getBearing = (from: [number, number], to: [number, number]) => {
   const [lng1, lat1] = from;

@@ -122,3 +122,10 @@
     margin-top: 0.6rem;
   }
   
+  /* Boton de eliminar vehiculo*/
+  .panel-btn--danger {
+    background: #dc2626;          /* rojo 600 */
+    color: #ffffff;
+  }
+  .panel-btn--danger:hover { background: #b91c1c; }
+  

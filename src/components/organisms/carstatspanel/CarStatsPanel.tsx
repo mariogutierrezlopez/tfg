@@ -13,6 +13,7 @@ type Props = {
   isPlaying: boolean;
   onClose: () => void;
   onRequestRouteChange: (carId: string) => void;
+  onDelete: (carId: string) => void;
   mapRef: React.RefObject<mapboxgl.Map>;
 };
 
@@ -30,6 +31,7 @@ const CarStatsPanel: React.FC<Props> = ({
   isPlaying,
   onClose,
   onRequestRouteChange,
+  onDelete,
   mapRef,
 }) => {
   const [lat, setLat] = useState(0);
@@ -56,6 +58,7 @@ const CarStatsPanel: React.FC<Props> = ({
       setDirection(rot);
 
       // Velocidad real y distancia acumulada
+      // Velocidad real y distancia acumulada
       if (prevPos.current) {
         const distMeters = distance(
           turfPoint(prevPos.current),
@@ -65,13 +68,16 @@ const CarStatsPanel: React.FC<Props> = ({
 
         const deltaTime = (now - lastUpdate.current) / 1000;
 
-        if (deltaTime > 0) {
+        /* 👉 solo actualizamos la velocidad si la simulación está en marcha */
+        if (isPlaying && deltaTime > 0) {
           const speedMps = distMeters / deltaTime;
-          setRealSpeed(speedMps * 3.6);
+          setRealSpeed(speedMps * 3.6); // km/h
         }
 
-        // ✅ Sumar al total (en kilómetros)
-        setTotalDistance((prev) => prev + distMeters / 1000);
+        /* la distancia total solo debe aumentar cuando el coche avanza */
+        if (isPlaying) {
+          setTotalDistance((prev) => prev + distMeters / 1000); // km
+        }
       }
 
       prevPos.current = pos;
@@ -87,7 +93,7 @@ const CarStatsPanel: React.FC<Props> = ({
       if (keepCentered && mapRef.current) {
         mapRef.current.flyTo({
           center: pos,
-          zoom: 17,
+          zoom: 20,
           speed: 0.5,
           duration: 500,
           essential: true,
@@ -106,12 +112,11 @@ const CarStatsPanel: React.FC<Props> = ({
       <div className="car-stats-header">
         <div className="car-id">Coche {car.id}</div>
         <button className="close-btn" onClick={onClose}>
-        <FaTimes size={12} />
+          <FaTimes size={12} />
         </button>
       </div>
 
-
-       {/* ===== Lista ===== */}
+      {/* ===== Lista ===== */}
       <ul>
         <li>
           <strong>Velocidad:</strong> {realSpeed.toFixed(1)} km/h
@@ -156,14 +161,20 @@ const CarStatsPanel: React.FC<Props> = ({
       </button>
 
       <button
-        className={`panel-btn ${
-          keepCentered ? "panel-btn--primary" : ""
-        }`}
+        className={`panel-btn ${keepCentered ? "panel-btn--primary" : ""}`}
         onClick={() => setKeepCentered((prev) => !prev)}
       >
         {keepCentered ? "Centrado ON" : "Centrar vehículo"}
       </button>
-      
+
+      {car.id !== "main-car" && (
+        <button
+          className="panel-btn panel-btn--danger"
+          onClick={() => onDelete(car.id)}
+        >
+          Eliminar vehículo
+        </button>
+      )}
     </div>
   );
 };
