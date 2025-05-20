@@ -88,7 +88,7 @@ export const useRouteCalculation = ({
             type:"geojson",
             data:{
               type:"Feature",
-              geometry:{ type:"LineString", coordinates: routeData.coordinates },
+              geometry:{ type:"LineString", coordinates: routeData.drawCoords },
               properties:{}
             }
           });
