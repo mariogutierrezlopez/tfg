@@ -24,7 +24,8 @@ export async function fetchRouteWithSpeeds(
   const url =
     `https://api.mapbox.com/directions/v5/${PROFILE}/${coordStr}` +
     `?overview=full&geometries=geojson` +
-    `&annotations=maxspeed,speed` +          // ✨ pedimos ambos
+    `&annotations=maxspeed,speed` +
+    `&speed_type=freeflow` +
     `&steps=false&access_token=${MAPBOX_TOKEN}`;
 
   const data  = await fetch(url).then((r) => r.json());

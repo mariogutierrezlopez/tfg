@@ -88,7 +88,7 @@ const SimulatorApp: React.FC = () => {
     token: mapboxToken,
   });
 
-  const { startCarAnimation, handleRoadClick } = useCarManager(
+  const { spawnMainCar, handleRoadClick } = useCarManager(
     mapInstance,
     mapRef,
     agentsRef,
@@ -241,7 +241,7 @@ const SimulatorApp: React.FC = () => {
           drawRef={drawRef}
           mode={mode}
           setMode={setMode}
-          onSendSelection={startCarAnimation}
+          onSendSelection={() => {void spawnMainCar();} }
         />
       )}
 

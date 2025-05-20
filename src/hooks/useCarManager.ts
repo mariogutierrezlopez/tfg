@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import { CarAgent } from "../logic/agents/CarAgents";
 import {
   addCarMarker,
-  startCarAnimation,                   // ① importamos la versión única
+  spawnMainCar,
 } from "../utils/carUtils";
 import { fetchRouteFrom } from "../utils/routeUtils";
 import { TrafficElement } from "../utils/types";
@@ -131,18 +131,24 @@ export const useCarManager = (
   /* devolvemos las utilidades                                          */
   /* ------------------------------------------------------------------ */
   return {
-    startCarAnimation: (coords?: [number, number][]) =>
-      startCarAnimation(
-        coords ?? routeData?.coordinates,
-        selectedCarType,
-        routeData,
-        mapInstance!,
+    spawnMainCar: async () => {
+      if (!routeData || !mapInstance) return;
+
+      const origin = routeData.coordinates[0];
+      const destination = routeData.coordinates[routeData.coordinates.length - 1];
+
+      await spawnMainCar(
+        mapInstance,
         agentsRef,
+        origin,
+        destination,
+        selectedCarType,
         setSelectedCarId,
         setShowCarSelector,
         setShowSimulationControls,
-        setSelectionSent
-      ),
-    handleRoadClick,
+        setSelectionSent,
+        routeData,
+      )
+    }
   };
 };

@@ -6,6 +6,7 @@ import { TrafficElement } from "./types";
 import { mergeTrafficRules } from "./mergeTrafficRules";
 import { attachMeterScaling } from "./attachMeterScaling";
 import { vehicleSizes } from "./types";
+import { fetchRouteWithSpeeds } from "../utils/mapboxDirections";
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
@@ -105,57 +106,70 @@ export const addCarMarker = async (
 };
 
 /* ------------------------------------------------------------------ */
-/* startCarAnimation (main-car)                                        */
+/* spawnMainCar (main-car)  ── ahora asíncrono                         */
 /* ------------------------------------------------------------------ */
-export const startCarAnimation = (
-  routeCoords: [number, number][],
-  selectedCarType: CarOption,
-  routeData: any,
+export async function spawnMainCar(
   map: mapboxgl.Map,
   agentsRef: React.MutableRefObject<CarAgent[]>,
+  origin: [number, number],
+  destination: [number, number],
+  selectedCarType: CarOption,
   setSelectedCarId: (id: string) => void,
   setShowCarSelector: (b: boolean) => void,
   setShowSimulationControls: (b: boolean) => void,
-  setSelectionSent: (b: boolean) => void
-) => {
-  const points = routeCoords ?? routeData?.coordinates;
-  if (!points) return;
+  setSelectionSent: (b: boolean) => void,
+  /* si ya calculaste la ruta fuera, pásala aquí ↓ y no se volverá a pedir */
+  routeData?: { coordinates: [number, number][], stepSpeeds: number[] }
+) {
+  /* 1️⃣  ruta + límites ------------------------------------------------ */
+  let coords: [number, number][], speeds: number[];
 
-  const sizeCfg = vehicleSizes[selectedCarType.id as keyof typeof vehicleSizes] ?? { w: 36, h: 60 };
-  const wM = (sizeCfg as any).wM ?? sizeCfg.w / 20;
-  const lM = (sizeCfg as any).lM ?? sizeCfg.h / 20;
+  if (routeData) {                     // ya viene todo
+    coords = routeData.coordinates;
+    speeds = routeData.stepSpeeds;
+  } else {                             // la pedimos a Mapbox Directions
+    const res = await fetchRouteWithSpeeds([origin, destination]);
+    coords = res.geometry;
+    speeds = res.stepSpeeds;
+  }
+
+  /* 2️⃣  icono + escalado --------------------------------------------- */
+  const cfg = vehicleSizes[selectedCarType.id as keyof typeof vehicleSizes] ?? { w: 36, h: 60 };
+  const wM  = (cfg as any).wM ?? cfg.w / 20;
+  const lM  = (cfg as any).lM ?? cfg.h / 20;
 
   const marker = new mapboxgl.Marker({
     element: createCarIcon(selectedCarType.image, selectedCarType.id, "main-car",
       () => setSelectedCarId("main-car")),
     rotationAlignment: "map",
-    pitchAlignment: "map",
+    pitchAlignment:    "map",
     anchor: "center",
   })
-    .setLngLat(points[0])
+    .setLngLat(coords[0])
     .addTo(map);
 
   const detach = attachMeterScaling(map, marker, wM, lM);
 
-  /* agente principal */
+  /* 3️⃣  agente principal ---------------------------------------------- */
   const mainCar = new CarAgent(
     "main-car",
-    points[0],
-    points,
+    coords[0],            // posición inicial
+    coords.slice(1),      // resto de la ruta
     marker,
     selectedCarType,
-    routeData?.stepSpeeds ?? []
+    speeds
   );
   (mainCar as any).detachZoom = detach;
 
   agentsRef.current = agentsRef.current.filter(c => c.id !== "main-car");
   agentsRef.current.push(mainCar);
 
-  /* UI */
+  /* 4️⃣  UI ------------------------------------------------------------ */
   setShowCarSelector(true);
   setShowSimulationControls(true);
   setSelectionSent(true);
-};
+}
+
 
 /* ------------------------------------------------------------------ */
 /* Bearing util                                                        */
