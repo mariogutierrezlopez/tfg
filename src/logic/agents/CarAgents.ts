@@ -41,6 +41,18 @@ export class CarAgent extends TrafficAgent {
     console.log(`[${id}] CarAgent creado con stepSpeeds:`, stepSpeeds);
   }
 
+  private getCurrentStepSpeed(): number {
+    /*  stepSpeeds.length == nº de segmentos (N)
+        this.route.length  == nodos que aún quedan (N, N-1, …, 0)
+  
+        Índice del tramo = N − this.route.length                    */
+    const idx = this.stepSpeeds.length - this.route.length;
+
+    /*  Clamp por si ya hemos llegado al final (route.length == 0)   */
+    return this.stepSpeeds[Math.min(idx, this.stepSpeeds.length - 1)] ?? this.maxSpeed;
+  }
+
+
   /** ------------------------------------------------------------------
    *  Analiza señales / reglas de tráfico y ajusta la velocidad / parada
    *  ------------------------------------------------------------------ */
@@ -158,12 +170,8 @@ export class CarAgent extends TrafficAgent {
     }
 
     /* --- Recupera velocidad si no había motivos para frenar --- */
-    if (!shouldSlowDown) {
-      this.targetSpeed = Math.min(
-        this.targetSpeed + this.acceleration * 0.5,
-        this.currentStepSpeed
-      );
-    }
+    if (!shouldSlowDown) this.targetSpeed = this.currentStepSpeed;
+
   }
 
   hasPassedRule(rule: TrafficElement): boolean {
@@ -214,7 +222,7 @@ export class CarAgent extends TrafficAgent {
     const myDirection =
       this.route.length >= 1
         ? Math.atan2(this.route[0][0] - lng1, this.route[0][1] - lat1) *
-          (180 / Math.PI)
+        (180 / Math.PI)
         : 0;
 
     const angleDiff = Math.abs(dirToOther - myDirection);
@@ -291,17 +299,14 @@ export class CarAgent extends TrafficAgent {
     /* -----------------------------------------
        1.  Velocidad objetivo y frenadas
     ----------------------------------------- */
-    const totalRoute = this.route.length + 1;
-    const stepIndex = Math.max(0, this.stepSpeeds.length - totalRoute);
-    this.currentStepSpeed = this.stepSpeeds[stepIndex] ?? this.maxSpeed;
+    // const totalRoute = this.route.length + 1;
+    // const stepIndex = Math.max(0, this.stepSpeeds.length - totalRoute);
+    this.currentStepSpeed = this.getCurrentStepSpeed();
     this.maxSpeed = this.currentStepSpeed;
     this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
 
-    if (this.stopped) {
-      this.stopTimer -= dt;
-      if (this.stopTimer <= 0) this.stopped = false;
-      return;
-    }
+    /*  si no estoy parado por una señal/vehículo, apunto directo al límite */
+    if (!this.stopped) this.targetSpeed = this.currentStepSpeed;
 
     /* aceleración / deceleración */
     if (this.speed < this.targetSpeed) {
@@ -353,7 +358,7 @@ export class CarAgent extends TrafficAgent {
     const targetRot = (rawBearing + 360) % 360; // 0…359
     let delta = targetRot - this.lastRotation;
     if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360; 
+    if (delta < -180) delta += 360;
     this.lastRotation = (this.lastRotation + delta * 0.2 + 360) % 360;
 
     this.marker.setRotation(this.lastRotation);
