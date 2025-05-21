@@ -3,112 +3,126 @@ import { carOptions } from "../constants/carOptions";
 import Papa from "papaparse";
 import mapboxgl from "mapbox-gl";
 import { telemetry, TelemetryRow } from "./telemetryStore";
+import { TrafficElement } from "./types";
+import { drawRoundaboutEntryZone } from "./mapSetup";
 
-export function exportCarsToCsv(cars: CarAgent[]): void {
-  const csvContent = [
-    [
-      "id",
-      "type",
-      "longitude",
-      "latitude",
-      "speed",
-      "maxSpeed",
-      "targetSpeed",
-      "route",
-      "stepSpeeds",
-    ],
-    ...cars.map((car) => [
-      car.id,
-      car.carType.id,
-      car.position[0],
-      car.position[1],
-      car.speed,
-      car.maxSpeed,
-      car.targetSpeed,
-      `"${JSON.stringify(car.route).replace(/"/g, '""')}"`,
-      `"${JSON.stringify(car.stepSpeeds).replace(/"/g, '""')}"`,
-    ]),
-  ]
-    .map((row) => row.join(","))
-    .join("\n");
+const csvSafe = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", "escenario.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
+
+  const carRows = cars.map(c => [
+    c.id, "car", c.carType.id, c.position[0], c.position[1],
+    c.speed, c.maxSpeed, c.targetSpeed,
+    csvSafe(JSON.stringify(c.route)),        // ⬅️
+    csvSafe(JSON.stringify(c.stepSpeeds)),   // ⬅️
+    "", "", "", ""                           // relleno de columnas de reglas
+  ]);
+
+  const ruleRows = rules.map(r => [
+    r.id, "rule", "",
+    "", "", "", "", "",                     // columnas vacías
+    "", "",
+    r.type,
+    csvSafe(JSON.stringify(r.location)),    // ⬅️ loc seguro
+    r.radius ?? "",
+    r.priorityRule ?? ""
+  ]);
+
+  const header = [
+    "id","type","subtype","longitude","latitude","speed","maxSpeed",
+    "targetSpeed","route","stepSpeeds",
+    "ruleType","loc","radius","priority"
+  ];
+
+  const csv = [header, ...carRows, ...ruleRows].map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const a    = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "scenario.csv";
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
-export function importCarsFromCsv(
-  file: File,
-  map: mapboxgl.Map,
-  callback: (cars: CarAgent[]) => void
-): void {
+export function importScenarioFromCsv(
+  file      : File,
+  map       : mapboxgl.Map,
+  callback  : (cars: CarAgent[], rules: TrafficElement[]) => void
+){
   Papa.parse(file, {
-    header: true,
+    header        : true,
     skipEmptyLines: true,
-    complete: (results) => {
-      const parsedCars = (results.data as any[])
-        .map((data) => {
-          const carType = carOptions.find((c) => c.id === data.type);
-          if (!carType) {
-            console.warn(`Tipo de coche desconocido: ${data.type}`);
-            return null;
-          }
 
+    complete: (res) => {
+      const cars : CarAgent[]      = [];
+      const rules: TrafficElement[] = [];
+
+      (res.data as any[]).forEach(row => {
+        /* ---------- FILAS DE COCHES ---------- */
+        if (row.type === "car"){
+          const carType = carOptions.find(c => c.id === row.subtype || row.type);
+          if (!carType) { console.warn("Tipo coche desconocido", row.subtype); return; }
+
+          /* icono */
           const el = document.createElement("div");
-          el.className = "vehicle-marker";
-          el.style.width = "32px";
-          el.style.height = "32px";
-          el.style.backgroundImage = `url(${carType.image})`;
-          el.style.backgroundSize = "contain";
-          el.style.backgroundRepeat = "no-repeat";
-          el.style.backgroundPosition = "center";
-          el.title = data.id;
+          el.style.cssText = `
+            width:32px;height:32px;background:url(${carType.image}) center/contain no-repeat;
+          `;
 
           const marker = new mapboxgl.Marker(el)
-            .setLngLat([parseFloat(data.longitude), parseFloat(data.latitude)])
+            .setLngLat([ +row.longitude, +row.latitude ])
             .addTo(map);
 
-          let route: [number, number][] = [];
-          try {
-            route = data.route ? JSON.parse(data.route) : [];
-          } catch (e) {
-            console.warn(`Ruta malformada para el coche ${data.id}`, e);
-          }
-
-          let stepSpeeds: number[] = [];
-          try {
-            stepSpeeds = data.stepSpeeds ? JSON.parse(data.stepSpeeds) : [];
-          } catch (e) {
-            console.warn(`stepSpeeds malformado para el coche ${data.id}`, e);
-          }
+          /* ruta + speeds */
+          let route: [number,number][]  = [];
+          let speeds: number[] = [];
+          try{ route  = row.route      ? JSON.parse(row.route)      : []; }catch{}
+          try{ speeds = row.stepSpeeds ? JSON.parse(row.stepSpeeds) : []; }catch{}
 
           const agent = new CarAgent(
-            data.id,
-            [parseFloat(data.longitude), parseFloat(data.latitude)],
+            row.id,
+            [ +row.longitude, +row.latitude ],
             route,
             marker,
             carType,
-            stepSpeeds
+            speeds
           );
+          agent.speed        = +row.speed  || 0;
+          agent.maxSpeed     = +row.maxSpeed || agent.maxSpeed;
+          agent.targetSpeed  = +row.targetSpeed || agent.targetSpeed;
 
-          agent.speed = parseFloat(data.speed);
-          agent.maxSpeed = parseFloat(data.maxSpeed);
-          agent.targetSpeed = parseFloat(data.targetSpeed);
+          cars.push(agent);
+        }
 
-          return agent;
-        })
-        .filter(Boolean) as CarAgent[];
+        /* ---------- FILAS DE REGLAS ---------- */
+        if (row.type === "rule"){
+          try{
+            const loc: [number,number] = JSON.parse(row.loc);
+            rules.push({
+              id           : row.id,
+              type         : row.ruleType,
+              location     : loc,
+              radius       : Number(row.radius) || 20,
+              priorityRule : row.priority || undefined
+            });
+          }catch(e){
+            console.warn("Regla malformada:", row, e);
+          }
+        }
+      });
 
-      if (parsedCars.length > 0) {
-        map.flyTo({ center: parsedCars[0].position, zoom: 17 });
-      }
+      /* Dibuja las reglas cargadas ---------------------------------- */
+      rules.forEach(r => {
+        if (r.type === "roundabout"){
+          drawRoundaboutEntryZone(map, r, `${r.id}-zone`);
+        }
+        // Ejemplo: para “yield” podrías dibujar un icono o círculo:
+        // else if (r.type === "yield"){ … }
+      });
 
-      callback(parsedCars);
-    },
+      /* centra el mapa */
+      if (cars.length) map.flyTo({ center: cars[0].position, zoom:17 });
+
+      callback(cars, rules);
+    }
   });
 }
 

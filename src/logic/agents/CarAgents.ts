@@ -57,6 +57,7 @@ export class CarAgent extends TrafficAgent {
    *  Analiza señales / reglas de tráfico y ajusta la velocidad / parada
    *  ------------------------------------------------------------------ */
   reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
+    /* si ya estoy detenido por una regla, dejo que el stopTimer haga su trabajo */
     if (this.stopped) return;
 
     let shouldSlowDown = false;
@@ -70,81 +71,45 @@ export class CarAgent extends TrafficAgent {
       if (rule.type === "roundabout") {
         const isInside = d < rule.radius;
 
-        /* Ya estoy dentro → marco bandera y continúo */
+        /* ① Si YA estoy dentro, marco bandera y continúo */
         if (isInside) {
           this.insideRoundaboutIds.add(rule.id);
           continue;
         }
 
-        /* Me aproximo al borde (radio + 25 m) */
-        const isApproaching = d < rule.radius + 25;
+        /* ② Me aproximo al borde (radio + 30 m) */
+        const isApproaching = d < rule.radius + 30;
 
         if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
-          /* Coches que ya están dentro */
-          const carsInside = others.filter((o) =>
+          /* coches que ya están dentro de ESTA rotonda */
+          const carsInside = others.filter(o =>
             o.insideRoundaboutIds.has(rule.id)
           );
 
-          /* ---------- GAP-ACCEPTANCE ---------- */
-          let conflict = false;
-
-          for (const insideCar of carsInside) {
-            /* bearing del brazo de entrada (centro → yo) */
-            const entryBearing = bearing(
-              turfPoint(rule.location),
-              turfPoint(this.position)
-            );
-
-            /* bearing actual del coche que está dentro (centro → él) */
-            const insideBearing = bearing(
-              turfPoint(rule.location),
-              turfPoint(insideCar.position)
-            );
-
-            /* diferencia angular más corta (0-180) */
-            const angDiff = Math.abs(
-              ((insideBearing - entryBearing + 540) % 360) - 180
-            );
-
-            /* distancia del interior al centro */
-            const rDist = distance(
-              turfPoint(rule.location),
-              turfPoint(insideCar.position),
-              { units: "meters" }
-            );
-
-            /* Conflicto si:
-               1) está aún dentro (≤ 1.4× R)
-               2) está en mi semicírculo delantero (±90°) */
-            if (rDist < rule.radius * 1.4 && angDiff < 90) {
-              conflict = true;
-              break;
-            }
-          }
-
-          if (conflict) {
-            /* Detención completa: cede paso */
+          /* ---------- STOP-AND-WAIT ---------- */
+          if (carsInside.length > 0) {
+            /* Detención completa: esperamos a que la rotonda quede libre */
             this.stopped = true;
-            this.stopTimer = 1.5; // ⬅ ajusta a tu gusto
+            this.stopTimer = 1.0;     // ⟵ puedes ajustar
             this.speed = 0;
             this.targetSpeed = 0;
-            return;
+            return;                     // ¡salimos, ya estamos parados!
           }
 
-          /* Si no hay conflicto real → reduzco velocidad de entrada */
-          this.targetSpeed = Math.min(this.targetSpeed, 2.0); // 2 m/s ≈ 7 km/h
+          /* No hay nadie dentro → entro pero MUY lento */
+          this.targetSpeed = Math.min(this.targetSpeed, 1.5); // ≈ 5 km/h
           shouldSlowDown = true;
         }
       }
 
       /* ========== 2. CEDA EL PASO GENÉRICO ========== */
       if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
-        this.targetSpeed = Math.min(this.targetSpeed, 1.0);
+        this.targetSpeed = Math.min(this.targetSpeed, 1.0); // ≈ 3.6 km/h
         shouldSlowDown = true;
       }
     }
 
-    /* --- Limpieza de bandera: salgo de la rotonda --- */
+    /* —— Limpieza de bandera al SALIR de la rotonda —— */
     for (const rule of rules) {
       if (rule.type !== "roundabout" || !this.insideRoundaboutIds.has(rule.id))
         continue;
@@ -162,17 +127,17 @@ export class CarAgent extends TrafficAgent {
       const goingOut =
         Math.abs(
           bearing(turfPoint(this.position), turfPoint(next)) - headingOut
-        ) < 60; // dirección ya apunta fuera
+        ) < 60;                                   // la dirección ya apunta fuera
 
       if (dCenter > rule.radius && goingOut) {
         this.insideRoundaboutIds.delete(rule.id);
       }
     }
 
-    /* --- Recupera velocidad si no había motivos para frenar --- */
+    /* —— Si no había motivos para frenar, volvemos al límite permitido —— */
     if (!shouldSlowDown) this.targetSpeed = this.currentStepSpeed;
-
   }
+
 
   hasPassedRule(rule: TrafficElement): boolean {
     if (this.route.length < 1) return false;

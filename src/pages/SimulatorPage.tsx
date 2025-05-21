@@ -22,7 +22,7 @@ import { CarOption } from "../utils/types";
 import { useRouteCalculation } from "../hooks/useRouteCalculation";
 import { useSearchSelection } from "../hooks/useSearchSelection";
 import { useRoadClickBinding } from "../hooks/useRoadClickBinding";
-import { importCarsFromCsv, exportCarsToCsv } from "../utils/csvUtils";
+import { importScenarioFromCsv, exportScenarioToCsv } from "../utils/csvUtils";
 import ScenarioGalleryModal from "../components/organisms/scenariogallerymodal/ScenarioGalleryModal";
 import { drawCarRoute } from "../utils/mapUtils";
 import { addRoadClickableLayer } from "../utils/mapLayers";
@@ -179,16 +179,16 @@ const SimulatorApp: React.FC = () => {
                   type: "text/csv",
                 });
                 if (mapRef.current) {
-                  importCarsFromCsv(file, mapRef.current, (cars) => {
+                  importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
                     agentsRef.current = cars;
+                    setTrafficRules(rules);              // ← guarda las reglas
 
-                    const mainCar = cars.find((c) => c.id === "main-car");
+                    const mainCar = cars.find(c => c.id === "main-car");
                     if (mainCar && mainCar.route.length > 1) {
                       drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
                     }
 
                     addRoadClickableLayer(mapRef.current!);
-
                     setShowSimulationControls(true);
                     setShowCarSelector(true);
                     setSelectionSent(true);
@@ -216,8 +216,9 @@ const SimulatorApp: React.FC = () => {
           onFileUpload={(e) => {
             const file = e.target.files?.[0];
             if (file && mapRef.current) {
-              importCarsFromCsv(file, mapRef.current, (cars) => {
+              importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
                 agentsRef.current = cars;
+                setTrafficRules(rules);
 
                 const mainCar = cars.find((c) => c.id === "main-car");
                 if (mainCar && mainCar.route.length > 1) {
@@ -322,7 +323,7 @@ const SimulatorApp: React.FC = () => {
 
             <button
               className="export-btn"
-              onClick={() => exportCarsToCsv(agentsRef.current)}
+              onClick={() => exportScenarioToCsv(agentsRef.current, trafficRules)}
               title="Exportar a CSV"
             >
               <FaFileCsv className="export-icon" />
