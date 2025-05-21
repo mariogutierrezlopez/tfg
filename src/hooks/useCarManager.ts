@@ -74,29 +74,39 @@ export const useCarManager = (
       const tgt = agentsRef.current.find(a => {
         const r = a.marker.getElement().getBoundingClientRect();
         return e.originalEvent.clientX >= r.left && e.originalEvent.clientX <= r.right &&
-               e.originalEvent.clientY >= r.top  && e.originalEvent.clientY <= r.bottom;
+          e.originalEvent.clientY >= r.top && e.originalEvent.clientY <= r.bottom;
       });
       if (tgt) { setSelectedCarId(tgt.id); return; }
 
       /* ③ crear un coche nuevo -------------------------------- */
       if (!mapInstance) return;
 
+      /* ① calculamos ruta + reglas exactamente igual que con main-car */
+      // ③ crear un coche nuevo
       const origin: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-      /* si el usuario no marcó un destino previo, usamos un fallback pequeño */
-      const dest: [number, number] =
+      const destination: [number, number] =
         destinationCoords ?? [origin[0] + 0.01, origin[1] + 0.01];
+
+      const out = await handleRouteCalculation(origin, destination, { skipFitBounds: true });
+      if (!out) return;
+
+      const { routeData, trafficRules } = out;
+      setTrafficRules(prev => mergeTrafficRules(prev, trafficRules));
 
       const newId = crypto.randomUUID();
 
       await spawnCar(
-        mapInstance,
-        agentsRef,
+        mapInstance,        // map
+        agentsRef,          // lista mutable
         origin,
-        dest,
+        destination,
         selectedCarType,
         newId,
-        () => setSelectedCarId(newId)          // callback al hacer click en su icono
+        () => setSelectedCarId(newId)
       );
+
+      /* pinta su línea + pin destino */
+      drawCarRoute(mapInstance, newId, routeData.drawCoords);
     },
     [
       mapInstance,
@@ -120,7 +130,7 @@ export const useCarManager = (
     spawnMainCar: async () => {
       if (!routeData || !mapInstance) return;
 
-      const origin      = routeData.coordinates[0];
+      const origin = routeData.coordinates[0];
       const destination = routeData.coordinates.at(-1)!;
 
       await spawnMainCar(

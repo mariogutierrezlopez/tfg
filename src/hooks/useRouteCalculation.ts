@@ -5,9 +5,9 @@ import { useCallback } from "react";
 // import mapboxgl from "mapbox-gl";
 // import { point as turfPoint }  from "@turf/helpers";
 // import distance                from "@turf/distance";
-import { TrafficElement }      from "../utils/types";
-import { fetchRouteFrom }      from "../utils/routeUtils";        // ✅
-import { mergeTrafficRules }   from "../utils/mergeTrafficRules";
+import { TrafficElement } from "../utils/types";
+import { fetchRouteFrom } from "../utils/routeUtils";        // ✅
+import { mergeTrafficRules } from "../utils/mergeTrafficRules";
 import { drawRoundaboutEntryZone } from "../utils/mapSetup";
 
 export const useRouteCalculation = ({
@@ -40,15 +40,15 @@ export const useRouteCalculation = ({
       opt?: { skipFitBounds?: boolean }
     ): Promise<{ routeData: any; trafficRules: TrafficElement[] } | null> => {
 
-      const origin      = customOrigin      ?? originCoords;
+      const origin = customOrigin ?? originCoords;
       const destination = customDestination ?? destinationCoords;
-      const skipFit     = opt?.skipFitBounds ?? false;
+      const skipFit = opt?.skipFitBounds ?? false;
 
       /* validación básica */
       if (
         !origin || !destination ||
         origin.some(isNaN) || destination.some(isNaN)
-      ){
+      ) {
         setRouteStatus("error");
         return null;
       }
@@ -63,10 +63,10 @@ export const useRouteCalculation = ({
         /* 2️⃣ estado global de reglas (merge para no perder las previas) */
         setTrafficRules(prev => {
           const merged = mergeTrafficRules(prev, trafficRules);
-          const map    = mapRef.current;
-          if (map){
+          const map = mapRef.current;
+          if (map) {
             merged.forEach(rule => {
-              if (rule.type === "roundabout"){
+              if (rule.type === "roundabout") {
                 const id = `${rule.id}-zone`;
                 if (!map.getLayer(id)) drawRoundaboutEntryZone(map, rule, id);
               }
@@ -80,38 +80,43 @@ export const useRouteCalculation = ({
 
         /* 4️⃣ pinta la polilínea */
         const map = mapRef.current;
-        if (map){
-          if (map.getLayer("route")) map.removeLayer("route");
-          if (map.getSource("route")) map.removeSource("route");
+        if (map) {
+          /* elimina en orden: capas → source */
+          if (map.getLayer("route-clickable-layer"))
+            map.removeLayer("route-clickable-layer");
+          if (map.getLayer("route"))
+            map.removeLayer("route");
+          if (map.getSource("route"))
+            map.removeSource("route");
 
           map.addSource("route", {
-            type:"geojson",
-            data:{
-              type:"Feature",
-              geometry:{ type:"LineString", coordinates: routeData.drawCoords },
-              properties:{}
+            type: "geojson",
+            data: {
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: routeData.drawCoords },
+              properties: {}
             }
           });
 
           map.addLayer({
-            id:"route",
-            type:"line",
-            source:"route",
-            paint:{ "line-color":"#007AFF", "line-width":5 }
+            id: "route",
+            type: "line",
+            source: "route",
+            paint: { "line-color": "#007AFF", "line-width": 5 }
           });
 
           /* capa clicable si la necesitas */
           map.addLayer({
-            id:"route-clickable-layer",
-            type:"line",
-            source:"route",
-            paint:{
-              "line-color":"#888","line-width":6,"line-opacity":0.6
+            id: "route-clickable-layer",
+            type: "line",
+            source: "route",
+            paint: {
+              "line-color": "#888", "line-width": 6, "line-opacity": 0.6
             }
           });
 
           if (!skipFit) {
-            map.fitBounds([ origin, destination ], { padding:50 });
+            map.fitBounds([origin, destination], { padding: 50 });
           }
         }
 
@@ -119,7 +124,7 @@ export const useRouteCalculation = ({
         setShowPostRouteView(true);
         return { routeData, trafficRules };
 
-      } catch(e){
+      } catch (e) {
         console.error("Route calculation failed:", e);
         setRouteStatus("error");
         return null;
