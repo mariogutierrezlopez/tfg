@@ -26,7 +26,8 @@ import { importCarsFromCsv, exportCarsToCsv } from "../utils/csvUtils";
 import ScenarioGalleryModal from "../components/organisms/scenariogallerymodal/ScenarioGalleryModal";
 import { drawCarRoute } from "../utils/mapUtils";
 import { addRoadClickableLayer } from "../utils/mapLayers";
-import { FaFileCsv } from "react-icons/fa";
+import { FaFileCsv, FaChartLine } from "react-icons/fa";
+import { exportTelemetryToCsv } from "../utils/csvUtils";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -328,10 +329,10 @@ const SimulatorApp: React.FC = () => {
             </button>
             <button
               className="export-btn"
-              onClick={() => exportCarsToCsv(agentsRef.current)}
-              title="Exportar a CSV"
+              onClick={exportTelemetryToCsv}
+              title="Descargar telemetría CSV"
             >
-              <FaFileCsv className="export-icon" />
+              <FaChartLine className="export-icon" />
             </button>
           </div>
         </>

@@ -2,6 +2,7 @@ import { CarAgent } from "../logic/agents/CarAgents";
 import { carOptions } from "../constants/carOptions";
 import Papa from "papaparse";
 import mapboxgl from "mapbox-gl";
+import { telemetry, TelemetryRow } from "./telemetryStore";
 
 export function exportCarsToCsv(cars: CarAgent[]): void {
   const csvContent = [
@@ -109,4 +110,44 @@ export function importCarsFromCsv(
       callback(parsedCars);
     },
   });
+}
+
+/** Convierte toda la telemetría acumulada a CSV y lanza la descarga */
+export function exportTelemetryToCsv() {
+  const header =
+    "carId,timestampUTC,lat,lng,speedKmh,directionDeg,distanceKm,simTimeSec\n";
+
+  /* aplanamos las filas de todos los coches */
+  const rows: TelemetryRow[] = Object.values(telemetry).flat();
+
+  /* orden opcional por tiempo */
+  rows.sort((a, b) => a.ts - b.ts);
+
+  const csv = header +
+    rows
+      .map(r =>
+        [
+          r.id,
+          new Date(r.ts).toISOString(),
+          r.lat.toFixed(6),
+          r.lng.toFixed(6),
+          r.speedKmh.toFixed(2),
+          r.direction.toFixed(1),
+          r.distance.toFixed(3),
+          r.simTime.toFixed(1),
+        ].join(",")
+      )
+      .join("\n");
+
+  /* descarga */
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `telemetry-${Date.now()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
