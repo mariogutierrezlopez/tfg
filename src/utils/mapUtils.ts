@@ -1,47 +1,62 @@
-/*  utils/carUtils.ts  */
-/*  ———————————————————————————————————————————————————————————————— */
-/*  Cambios aplicados:                                                   */
-/*   • Escalado físico en metros con attachMeterScaling                  */
-/*   • Uso de vehicleSizes { wPx, hPx, wM, lM }                          */
-/*   • El marker se coloca siempre en el 1er punto real de la ruta       */
-/*  ———————————————————————————————————————————————————————————————— */
+// src/utils/mapUtils.ts
+import * as mapboxgl from "mapbox-gl";
 
-import * as mapboxgl          from "mapbox-gl";
-
-/* ------------------------------------------------------------------ */
-/* helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-
-/**
- * drawMainCarRoute
- * @param map 
- * @param route 
- */
-export function drawMainCarRoute(
+export function drawCarRoute(
   map: mapboxgl.Map,
-  route: [number, number][]
+  carId: string,
+  coords: [number, number][],
+  colorHEX = "#2563eb"
 ) {
-  if (map.getLayer("main-car-route")) map.removeLayer("main-car-route");
-  if (map.getSource("main-car-route")) map.removeSource("main-car-route");
+  const src  = `${carId}-route-src`;
+  const line = `${carId}-route`;
+  const pin  = `${carId}-dest`;
 
-  map.addSource("main-car-route", {
+  /* limpia anterior */
+  if (map.getLayer(line)) map.removeLayer(line);
+  if (map.getLayer(pin))  map.removeLayer(pin);
+  if (map.getSource(src)) map.removeSource(src);
+
+  /* GeoJSON combinado */
+  map.addSource(src, {
     type: "geojson",
     data: {
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: route,
-      },
-      properties: {},
-    },
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},                     // ← añadido
+          geometry: { type: "LineString", coordinates: coords }
+        },
+        {
+          type: "Feature",
+          properties: {},                     // ← añadido
+          geometry: { type: "Point", coordinates: coords.at(-1)! }
+        }
+      ]
+    }
   });
 
+  /* línea */
   map.addLayer({
-    id: "main-car-route",
+    id: line,
     type: "line",
-    source: "main-car-route",
+    source: src,
+    filter: ["==", ["geometry-type"], "LineString"],
     layout: { "line-join": "round", "line-cap": "round" },
-    paint: { "line-color": "#2563eb", "line-width": 4, "line-opacity": 0.8 },
+    paint : { "line-color": colorHEX, "line-width": 4, "line-opacity": 0.8 }
+  });
+
+  /* destino */
+  map.addLayer({
+    id: pin,
+    type: "circle",
+    source: src,
+    filter: ["==", ["geometry-type"], "Point"],
+    paint : {
+      "circle-radius": 5,
+      "circle-color": colorHEX,
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#ffffff"
+    }
   });
 }

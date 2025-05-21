@@ -168,30 +168,35 @@ export async function spawnCar(
   agentsRef.current.push(agent);
 }
 
-export const spawnMainCar = (
-  map           : mapboxgl.Map,
-  agentsRef     : React.MutableRefObject<CarAgent[]>,
-  origin        : [number,number],
-  destination   : [number,number],
-  carType       : CarOption,
-  setSelected   : (id:string)=>void,
-  setShowCarSel : (b:boolean)=>void,
-  setShowSimCtl : (b:boolean)=>void,
-  setSelection  : (b:boolean)=>void,
-) =>
-  spawnCar(
+export async function spawnMainCar(
+  map                : mapboxgl.Map,
+  agentsRef          : React.MutableRefObject<CarAgent[]>,
+  origin             : [number, number],
+  destination        : [number, number],
+  carType            : CarOption,
+  setSelectedCarId   : (id: string) => void,
+  setShowCarSelector : (b: boolean) => void,
+  setShowSimControls : (b: boolean) => void,
+  setSelectionSent   : (b: boolean) => void,
+) {
+  /* 1) delegamos todo el trabajo pesado en spawnCar */
+  await spawnCar(
     map,
     agentsRef,
     origin,
     destination,
     carType,
-    "main-car",
-    () => setSelected("main-car")
-  ).then(()=>{
-    setShowCarSel(true);
-    setShowSimCtl(true);
-    setSelection(true);
-  });
+    "main-car",               // ← id fijo
+    () => setSelectedCarId("main-car"),
+  );
+
+  /* 2) encendemos la UI */
+  setShowCarSelector(true);
+  setShowSimControls(true);
+  setSelectionSent(true);     // oculta el SearchForm & RouteActionsPanel
+}
+
+
 
 
 

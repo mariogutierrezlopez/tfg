@@ -24,7 +24,7 @@ import { useSearchSelection } from "../hooks/useSearchSelection";
 import { useRoadClickBinding } from "../hooks/useRoadClickBinding";
 import { importCarsFromCsv, exportCarsToCsv } from "../utils/csvUtils";
 import ScenarioGalleryModal from "../components/organisms/scenariogallerymodal/ScenarioGalleryModal";
-import { drawMainCarRoute } from "../utils/mapUtils";
+import { drawCarRoute } from "../utils/mapUtils";
 import { addRoadClickableLayer } from "../utils/mapLayers";
 import { FaFileCsv } from "react-icons/fa";
 
@@ -143,25 +143,25 @@ const SimulatorApp: React.FC = () => {
   const deleteCar = (carId: string) => {
     const car = agentsRef.current.find(c => c.id === carId);
     if (!car) return;
-  
+
     /* 1 — Quitar marcador */
     car.marker.remove();
     agentsRef.current = agentsRef.current.filter(c => c.id !== carId);
-  
+
     /* 2 — Eliminar capa y fuente de la ruta, si existen */
     const map = mapRef.current;
     if (map) {
-      const layerId  = `${carId}-route`;
+      const layerId = `${carId}-route`;
       const sourceId = `${carId}-route`;
-  
-      if (map.getLayer(layerId))  map.removeLayer(layerId);
+
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
     }
-  
+
     /* 3 — Cerrar panel si era el seleccionado */
     if (selectedCarId === carId) setSelectedCarId(null);
   };
-  
+
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
@@ -183,7 +183,7 @@ const SimulatorApp: React.FC = () => {
 
                     const mainCar = cars.find((c) => c.id === "main-car");
                     if (mainCar && mainCar.route.length > 1) {
-                      drawMainCarRoute(mapRef.current!, mainCar.route);
+                      drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
                     }
 
                     addRoadClickableLayer(mapRef.current!);
@@ -220,7 +220,7 @@ const SimulatorApp: React.FC = () => {
 
                 const mainCar = cars.find((c) => c.id === "main-car");
                 if (mainCar && mainCar.route.length > 1) {
-                  drawMainCarRoute(mapRef.current, mainCar.route);
+                  drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
                 }
 
                 setShowSimulationControls(true);
@@ -240,7 +240,7 @@ const SimulatorApp: React.FC = () => {
           drawRef={drawRef}
           mode={mode}
           setMode={setMode}
-          onSendSelection={() => {void spawnMainCar();} }
+          onSendSelection={() => { void spawnMainCar(); }}
         />
       )}
 
@@ -254,9 +254,8 @@ const SimulatorApp: React.FC = () => {
 
       {routeStatus && (
         <div
-          className={`alert alert-${
-            routeStatus === "success" ? "success" : "danger"
-          } alert-dismissible fade show`}
+          className={`alert alert-${routeStatus === "success" ? "success" : "danger"
+            } alert-dismissible fade show`}
           role="alert"
         >
           {routeStatus === "success"
@@ -320,6 +319,13 @@ const SimulatorApp: React.FC = () => {
               onSelect={setSelectedCarId}
             />
 
+            <button
+              className="export-btn"
+              onClick={() => exportCarsToCsv(agentsRef.current)}
+              title="Exportar a CSV"
+            >
+              <FaFileCsv className="export-icon" />
+            </button>
             <button
               className="export-btn"
               onClick={() => exportCarsToCsv(agentsRef.current)}
