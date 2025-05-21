@@ -19,8 +19,11 @@ export function useSimulationLoop({
 }: Props) {
   const lastFrameRef = useRef(performance.now());
   const accumulator = useRef(0);
-  const simTimeRef = useRef(0); // ⬅️  nuevo
+  const simTimeRef = useRef(0);
   const FIXED_DT = 0.016; // 60 fps → 16 ms
+
+  const rulesRef = useRef<TrafficElement[]>(trafficRules);
+  useEffect(() => { rulesRef.current = trafficRules; }, [trafficRules]);
 
   useEffect(() => {
     if (!map) return;
@@ -34,24 +37,34 @@ export function useSimulationLoop({
         for (const agent of agentsRef.current) {
           const others = agentsRef.current.filter((a) => a.id !== agent.id);
 
-          agent.reactToTrafficRules(trafficRules, others);
+          // ── ➊ Gestionar stopTimer antes de procesar reglas ─────────
+          if (agent.stopped) {
+            agent.stopTimer -= FIXED_DT;
+            console.log(
+              `[${agent.id}] stopTimer=${agent.stopTimer.toFixed(2)}`
+            );
+            if (agent.stopTimer <= 0) {
+              console.log(`[${agent.id}] 🔔 stopTimer expirado, desbloqueo`);
+              agent.stopped = false;
+              // restablezco velocidad objetivo al paso actual
+              agent.targetSpeed = agent.currentStepSpeed;
+            }
+          }
+
+          agent.reactToTrafficRules(rulesRef.current, others);
           agent.reactToOtherCars(others, trafficRules);
 
           if (isPlayingRef.current) {
-            agent.updatePosition(FIXED_DT); // ⬅️ mueve
-            agent.maybeLog(agent, simTimeRef.current); // ⬅️ log
+            agent.updatePosition(FIXED_DT);
+            agent.maybeLog(agent, simTimeRef.current);
           }
         }
 
-        /* avanza reloj de la simulación */
         if (isPlayingRef.current) simTimeRef.current += FIXED_DT;
-
         accumulator.current -= FIXED_DT;
       }
 
-      /* dibuja interpolado */
       agentsRef.current.forEach((a) => a.draw(map));
-
       requestAnimationFrame(step);
     };
 

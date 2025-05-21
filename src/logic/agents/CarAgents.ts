@@ -11,6 +11,14 @@ import { CarOption } from "../../utils/types";
 import { destination, bearing } from "@turf/turf";
 import { telemetry, lastKm, TelemetryRow } from "../../utils/telemetryStore";
 
+
+// Constantes de configuracion
+// ------------------------------------------------
+//Velocidad máxima de entrada a la rotonda
+const ENTRY_LIMIT = 4.17;      // m/s  
+// Margen de seguridad entre coches
+const EXTRA_MARGIN = 3;         // m
+
 export class CarAgent extends TrafficAgent {
   maxSpeed: number;
   stopped = false;
@@ -53,90 +61,96 @@ export class CarAgent extends TrafficAgent {
   }
 
 
-  /** ------------------------------------------------------------------
-   *  Analiza señales / reglas de tráfico y ajusta la velocidad / parada
-   *  ------------------------------------------------------------------ */
-  reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
-    /* si ya estoy detenido por una regla, dejo que el stopTimer haga su trabajo */
-    if (this.stopped) return;
 
-    let shouldSlowDown = false;
+reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
+  // ─── 0) Limpieza de salidas de rotonda ───────────────────────
+  for (const rule of rules) {
+    if (rule.type !== "roundabout") continue;
+    const dCenter = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
+    if (this.insideRoundaboutIds.has(rule.id) && dCenter > rule.radius + 1) {
+      console.log(`[${this.id}] 🏁 sale de ${rule.id}, dCenter=${dCenter.toFixed(1)} > R+1`);
+      this.insideRoundaboutIds.delete(rule.id);
+      // además liberamos el “stop” si venía de aquí
+      if (this.stopped) {
+        console.log(`[${this.id}] 🔓 desbloqueo tras salir de ${rule.id}`);
+        this.stopped = false;
+      }
+    }
+  }
 
-    for (const rule of rules) {
-      const d = distance(turfPoint(this.position), turfPoint(rule.location), {
-        units: "meters",
-      });
+  // ─── 1) Si ya estoy detenido, dejo que stopTimer haga su trabajo ─────
+  if (this.stopped) {
+    console.log(`[${this.id}] detenido por regla, stopTimer=${this.stopTimer.toFixed(2)}`);
+    return;
+  }
 
-      /* ========== 1. ROTONDAS ========== */
-      if (rule.type === "roundabout") {
-        const isInside = d < rule.radius;
+  let shouldSlowDown = false;
 
-        /* ① Si YA estoy dentro, marco bandera y continúo */
-        if (isInside) {
+  for (const rule of rules) {
+    const d = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
+
+    // ─── ROTONDAS ───────────────────────────
+    if (rule.type === "roundabout") {
+      const isInside = d < rule.radius;
+
+      if (isInside) {
+        if (!this.insideRoundaboutIds.has(rule.id)) {
+          console.log(`[${this.id}] 🚗 entra en ${rule.id}, d=${d.toFixed(1)} < R=${rule.radius}`);
           this.insideRoundaboutIds.add(rule.id);
-          continue;
         }
-
-        /* ② Me aproximo al borde (radio + 30 m) */
-        const isApproaching = d < rule.radius + 30;
-
-        if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
-          /* coches que ya están dentro de ESTA rotonda */
-          const carsInside = others.filter(o =>
-            o.insideRoundaboutIds.has(rule.id)
-          );
-
-          /* ---------- STOP-AND-WAIT ---------- */
-          if (carsInside.length > 0) {
-            /* Detención completa: esperamos a que la rotonda quede libre */
-            this.stopped = true;
-            this.stopTimer = 1.0;     // ⟵ puedes ajustar
-            this.speed = 0;
-            this.targetSpeed = 0;
-            return;                     // ¡salimos, ya estamos parados!
-          }
-
-          /* No hay nadie dentro → entro pero MUY lento */
-          this.targetSpeed = Math.min(this.targetSpeed, 1.5); // ≈ 5 km/h
-          shouldSlowDown = true;
-        }
+        // mantengo ENTRY_LIMIT mientras estoy dentro
+        this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
+        shouldSlowDown = true;
+        continue;
       }
 
-      /* ========== 2. CEDA EL PASO GENÉRICO ========== */
-      if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
-        this.targetSpeed = Math.min(this.targetSpeed, 1.0); // ≈ 3.6 km/h
+      // aproximación
+      const brakingDist = Math.max(0,
+        (this.speed*this.speed - ENTRY_LIMIT*ENTRY_LIMIT)/(2*this.acceleration)
+      );
+      const isApproaching = d < rule.radius + brakingDist + EXTRA_MARGIN;
+
+      if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
+        console.log(
+          `[${this.id}] 🛑 acercándose a ${rule.id}, d=${d.toFixed(1)} < R+brake+margin=${(rule.radius+brakingDist+EXTRA_MARGIN).toFixed(1)}`
+        );
+        const carsInside = others.filter(o => o.insideRoundaboutIds.has(rule.id));
+        if (carsInside.length > 0) {
+          console.log(`[${this.id}] ⏸ stop-and-wait en ${rule.id}, cochesInside=${carsInside.length}`);
+          this.stopped = true;
+          this.stopTimer = 1.0;
+          this.speed = 0;
+          this.targetSpeed = 0;
+          return;
+        }
+        console.log(`[${this.id}] 🔄 freno a ENTRY_LIMIT antes de entrar en ${rule.id}`);
+        this.speed = Math.min(this.speed, ENTRY_LIMIT);
+        this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
         shouldSlowDown = true;
       }
     }
 
-    /* —— Limpieza de bandera al SALIR de la rotonda —— */
-    for (const rule of rules) {
-      if (rule.type !== "roundabout" || !this.insideRoundaboutIds.has(rule.id))
-        continue;
-
-      const dCenter = distance(
-        turfPoint(this.position),
-        turfPoint(rule.location),
-        { units: "meters" }
-      );
-      const headingOut = bearing(
-        turfPoint(rule.location),
-        turfPoint(this.position)
-      );
-      const next = this.route[0] ?? this.position;
-      const goingOut =
-        Math.abs(
-          bearing(turfPoint(this.position), turfPoint(next)) - headingOut
-        ) < 60;                                   // la dirección ya apunta fuera
-
-      if (dCenter > rule.radius && goingOut) {
-        this.insideRoundaboutIds.delete(rule.id);
-      }
+    // ─── CEDA EL PASO GENÉRICO ──────────────
+    if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
+      console.log(`[${this.id}] ⚠️ ceda el paso en ${rule.id}, d=${d.toFixed(1)}`);
+      this.targetSpeed = Math.min(this.targetSpeed, 1.0);
+      shouldSlowDown = true;
     }
-
-    /* —— Si no había motivos para frenar, volvemos al límite permitido —— */
-    if (!shouldSlowDown) this.targetSpeed = this.currentStepSpeed;
   }
+
+  // ─── 3) Si no hay nada que frene, recupero velocidad ───────────
+  if (!shouldSlowDown) {
+    console.log(
+      this.insideRoundaboutIds.size
+        ? `[${this.id}] sigo dentro de rotonda(s), mantengo ENTRY_LIMIT`
+        : `[${this.id}] ✅ fuera de todas las rotondas, recupero velocidad normal`
+    );
+    this.targetSpeed = this.insideRoundaboutIds.size ? ENTRY_LIMIT : this.currentStepSpeed;
+  }
+}
+
+
+
 
 
   hasPassedRule(rule: TrafficElement): boolean {
@@ -270,9 +284,6 @@ export class CarAgent extends TrafficAgent {
     this.maxSpeed = this.currentStepSpeed;
     this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
 
-    /*  si no estoy parado por una señal/vehículo, apunto directo al límite */
-    if (!this.stopped) this.targetSpeed = this.currentStepSpeed;
-
     /* aceleración / deceleración */
     if (this.speed < this.targetSpeed) {
       this.speed = Math.min(
@@ -338,6 +349,12 @@ export class CarAgent extends TrafficAgent {
   }
 
   reactToOtherCars(others: CarAgent[], rules: TrafficElement[]) {
+
+    rules.filter(r => r.type === "roundabout").forEach(r =>
+      console.log(`[RULE] ${r.id} centro=${r.location}  R=${r.radius}`)
+    );
+
+
     if (this.stopped) return;
 
     let shouldSlow = false;

@@ -24,7 +24,7 @@ export async function getTrafficRules(
     const tp = s.maneuver?.type;
     if(!loc||!tp) return;
     if(tp==="roundabout"||tp==="rotary"){
-      raw.push({id:`rb-${i}`,type:"roundabout",location:loc as any,radius:30,priorityRule:"must-stop"});
+      raw.push({id:`rb-${i}`,type:"roundabout",location:loc as any,radius:30,priorityRule:"give-way"});
     }else if(["merge","fork","turn"].includes(tp)){
       raw.push({id:`y-${i}`,type:"yield",location:loc as any,radius:15,priorityRule:"give-way"});
     }
@@ -40,6 +40,7 @@ export async function getTrafficRules(
   }
 
   const line = lineString(snappedRoute);
+  
   return uniq.map(r=>{
     const n = nearestPointOnLine(line,turfPoint(r.location));
     return {...r,location:[n.geometry.coordinates[0],n.geometry.coordinates[1]]};

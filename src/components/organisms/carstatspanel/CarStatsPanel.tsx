@@ -104,7 +104,7 @@ const CarStatsPanel: React.FC<Props> = ({
       if (ticking.current) clearInterval(ticking.current);
     };
   }, [car, simulationSpeed, isPlaying, keepCentered]);
-  console.log("StepSpeeds:", car.stepSpeeds);
+  // console.log("StepSpeeds:", car.stepSpeeds);
   return (
     <div className="car-stats-panel">
       {/* ===== Cabecera ===== */}

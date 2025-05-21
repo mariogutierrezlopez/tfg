@@ -29,7 +29,7 @@ export async function fetchRouteFrom(
 
   /* 2️⃣  reglas de tráfico -------------------------------------------- */
   const trafficRules = await getTrafficRules(
-    origin, destination, rawCoords, token
+    origin, destination, geometry, token
   );                                           // debe devolver TrafficElement[]
 
   /* 3️⃣  empaquetar ---------------------------------------------------- */
