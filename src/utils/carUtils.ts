@@ -7,6 +7,7 @@ import { mergeTrafficRules } from "./mergeTrafficRules";
 import { attachMeterScaling } from "./attachMeterScaling";
 import { vehicleSizes } from "./types";
 import { fetchRouteWithSpeeds } from "../utils/mapboxDirections";
+import { resampleRoute } from "./resampleRoute";
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
@@ -106,69 +107,92 @@ export const addCarMarker = async (
 };
 
 /* ------------------------------------------------------------------ */
-/* spawnMainCar (main-car)  ── ahora asíncrono                         */
+/* spawnCar genérico                      */
 /* ------------------------------------------------------------------ */
-export async function spawnMainCar(
-  map: mapboxgl.Map,
-  agentsRef: React.MutableRefObject<CarAgent[]>,
-  origin: [number, number],
-  destination: [number, number],
-  selectedCarType: CarOption,
-  setSelectedCarId: (id: string) => void,
-  setShowCarSelector: (b: boolean) => void,
-  setShowSimulationControls: (b: boolean) => void,
-  setSelectionSent: (b: boolean) => void,
-  /* si ya calculaste la ruta fuera, pásala aquí ↓ y no se volverá a pedir */
-  routeData?: { coordinates: [number, number][], stepSpeeds: number[] }
-) {
-  /* 1️⃣  ruta + límites ------------------------------------------------ */
-  let coords: [number, number][], speeds: number[];
+export async function spawnCar(
+  map           : mapboxgl.Map,
+  agentsRef     : React.MutableRefObject<CarAgent[]>,
+  origin        : [number,number],
+  destination   : [number,number],
+  carType       : CarOption,
+  carId         : string,                       // "main-car", randomId…
+  onClickMarker : () => void,
+){
+  /* 1. ruta + límites ------------------------------------------ */
+  const { geometry, stepSpeeds } =
+        await fetchRouteWithSpeeds([origin, destination]);
 
-  if (routeData) {                     // ya viene todo
-    coords = routeData.coordinates;
-    speeds = routeData.stepSpeeds;
-  } else {                             // la pedimos a Mapbox Directions
-    const res = await fetchRouteWithSpeeds([origin, destination]);
-    coords = res.geometry;
-    speeds = res.stepSpeeds;
-  }
+  const drawCoords = resampleRoute(geometry, 3);
 
-  /* 2️⃣  icono + escalado --------------------------------------------- */
-  const cfg = vehicleSizes[selectedCarType.id as keyof typeof vehicleSizes] ?? { w: 36, h: 60 };
-  const wM  = (cfg as any).wM ?? cfg.w / 20;
-  const lM  = (cfg as any).lM ?? cfg.h / 20;
+  /* 2. dibuja la polyline propia ------------------------------- */
+  const srcId = `${carId}-route`;
+  if (map.getLayer(srcId))   map.removeLayer(srcId);
+  if (map.getSource(srcId))  map.removeSource(srcId);
+
+  map.addSource(srcId, {
+    type: "geojson",
+    data: { type:"Feature", geometry:{type:"LineString",coordinates:drawCoords}}
+  });
+
+  map.addLayer({
+    id   : srcId,
+    type : "line",
+    source: srcId,
+    paint: { "line-color":"#2563eb", "line-width":4, "line-opacity":0.8 }
+  });
+
+  /* 3. marker escalado ----------------------------------------- */
+  const cfg = vehicleSizes[carType.id as keyof typeof vehicleSizes] ?? {w:36,h:60};
+  const wM  = (cfg as any).wM ?? cfg.w/20;
+  const lM  = (cfg as any).lM ?? cfg.h/20;
 
   const marker = new mapboxgl.Marker({
-    element: createCarIcon(selectedCarType.image, selectedCarType.id, "main-car",
-      () => setSelectedCarId("main-car")),
-    rotationAlignment: "map",
-    pitchAlignment:    "map",
-    anchor: "center",
-  })
-    .setLngLat(coords[0])
-    .addTo(map);
+      element : createCarIcon(carType.image, carType.id, carId, onClickMarker),
+      rotationAlignment:"map", pitchAlignment:"map", anchor:"center",
+  }).setLngLat(geometry[0]).addTo(map);
 
   const detach = attachMeterScaling(map, marker, wM, lM);
 
-  /* 3️⃣  agente principal ---------------------------------------------- */
-  const mainCar = new CarAgent(
-    "main-car",
-    coords[0],            // posición inicial
-    coords.slice(1),      // resto de la ruta
+  /* 4. agente --------------------------------------------------- */
+  const agent = new CarAgent(
+    carId,
+    geometry[0],
+    geometry.slice(1),       // resto ruta
     marker,
-    selectedCarType,
-    speeds
+    carType,
+    stepSpeeds
   );
-  (mainCar as any).detachZoom = detach;
+  (agent as any).detachZoom = detach;
 
-  agentsRef.current = agentsRef.current.filter(c => c.id !== "main-car");
-  agentsRef.current.push(mainCar);
-
-  /* 4️⃣  UI ------------------------------------------------------------ */
-  setShowCarSelector(true);
-  setShowSimulationControls(true);
-  setSelectionSent(true);
+  agentsRef.current = agentsRef.current.filter(a => a.id !== carId);
+  agentsRef.current.push(agent);
 }
+
+export const spawnMainCar = (
+  map           : mapboxgl.Map,
+  agentsRef     : React.MutableRefObject<CarAgent[]>,
+  origin        : [number,number],
+  destination   : [number,number],
+  carType       : CarOption,
+  setSelected   : (id:string)=>void,
+  setShowCarSel : (b:boolean)=>void,
+  setShowSimCtl : (b:boolean)=>void,
+  setSelection  : (b:boolean)=>void,
+) =>
+  spawnCar(
+    map,
+    agentsRef,
+    origin,
+    destination,
+    carType,
+    "main-car",
+    () => setSelected("main-car")
+  ).then(()=>{
+    setShowCarSel(true);
+    setShowSimCtl(true);
+    setSelection(true);
+  });
+
 
 
 /* ------------------------------------------------------------------ */

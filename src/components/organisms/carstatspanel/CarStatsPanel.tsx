@@ -8,7 +8,6 @@ import { FaTimes } from "react-icons/fa";
 
 type Props = {
   car: CarAgent;
-  carSpeedMps: number;
   simulationSpeed: number;
   isPlaying: boolean;
   onClose: () => void;

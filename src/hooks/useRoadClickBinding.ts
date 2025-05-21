@@ -1,28 +1,38 @@
-import { useEffect } from "react";
-import * as mapboxgl from "mapbox-gl";
+// src/hooks/useRoadClickBinding.ts
+import { useEffect, useRef } from "react";
+import type mapboxgl from "mapbox-gl";
 
-export const useRoadClickBinding = (
-  mapInstance: mapboxgl.Map | null,
-  handleRoadClick: (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => void,
+type MapEvt = mapboxgl.MapMouseEvent & mapboxgl.EventData;
+
+/** capas sobre las que queremos actuar */
+const TARGET_LAYERS = ["roads-clickable-layer", "route-clickable-layer"];
+
+export function useRoadClickBinding(
+  map: mapboxgl.Map | null,
+  onClick: (e: MapEvt) => void,
   deps: any[] = []
-) => {
-  useEffect(() => {
-    if (!mapInstance) return;
+) {
+  /* ref estable para la callback */
+  const cbRef = useRef<(e: MapEvt) => void>(() => {});
+  cbRef.current = onClick ?? (() => {});
 
-    const layers = ["roads-clickable-layer", "route-clickable-layer"]; // ambas capas
-    layers.forEach(layer => {
-      if (mapInstance.getLayer(layer)) {
-        mapInstance.off("click", layer, handleRoadClick);
-        mapInstance.on("click", layer, handleRoadClick);
+  useEffect(() => {
+    if (!map) return;
+
+    /** único listener para todo el mapa */
+    const listener = (e: MapEvt) => {
+      const feats = map.queryRenderedFeatures(e.point, {
+        layers: TARGET_LAYERS,
+      });
+      if (feats.length && typeof cbRef.current === "function") {
+        cbRef.current(e);          // clic sobre una de las capas
       }
-    });
+    };
+
+    map.on("click", listener);
 
     return () => {
-      layers.forEach(layer => {
-        if (mapInstance.getLayer(layer)) {
-          mapInstance.off("click", layer, handleRoadClick);
-        }
-      });
+      map.off("click", listener);
     };
-  }, [mapInstance, handleRoadClick, ...deps]);
-};
+  }, [map, ...deps]);              // <- se re-crea si cambian deps
+}

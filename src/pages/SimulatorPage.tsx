@@ -117,7 +117,6 @@ const SimulatorApp: React.FC = () => {
   const [inputMode, setInputMode] = useState<"search" | "manual" | "csv">(
     "search"
   );
-  const carSpeedMps = 10;
 
   useRoadClickBinding(mapInstance, handleRoadClick, [
     selectedCarType,
@@ -301,7 +300,6 @@ const SimulatorApp: React.FC = () => {
             {selectedCar && (
               <CarStatsPanel
                 car={selectedCar}
-                carSpeedMps={carSpeedMps}
                 simulationSpeed={simulationSpeed}
                 isPlaying={isPlaying}
                 onClose={() => setSelectedCarId(null)}
