@@ -1,0 +1,66 @@
+/* ────────────── Overlay ────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+}
+
+/* ────────────── Caja modal ────────────── */
+.modal-content {
+  width: 92%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow:
+    0 6px 10px rgba(0, 0, 0, 0.10),
+    0 12px 30px rgba(0, 0, 0, 0.20);
+  position: relative;
+  font-family: system-ui, sans-serif;
+}
+
+/* ─── Cabecera ─── */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+/* Botón cerrar: círculo blanco con sombra */
+.close-btn {
+  --size: 36px;
+
+  width: var(--size);
+  height: var(--size);
+  background: #ffffff;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+
+  box-shadow:
+    0 3px 5px rgba(0, 0, 0, 0.12),
+    0 6px 12px rgba(0, 0, 0, 0.16);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease;
+}
+.close-btn:hover   { transform: translateY(-2px); }
+.close-btn:active  { transform: scale(0.9); }

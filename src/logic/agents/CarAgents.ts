@@ -9,7 +9,7 @@ import {
 import distance from "@turf/distance";
 import { CarOption } from "../../utils/types";
 import { destination, bearing } from "@turf/turf";
-import { telemetry, lastKm, TelemetryRow } from "../../utils/telemetryStore";
+import { rawTelemetry, TelemetryRow } from "../../utils/telemetryStore";
 
 
 // Constantes de configuracion
@@ -62,92 +62,92 @@ export class CarAgent extends TrafficAgent {
 
 
 
-reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
-  // ─── 0) Limpieza de salidas de rotonda ───────────────────────
-  for (const rule of rules) {
-    if (rule.type !== "roundabout") continue;
-    const dCenter = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
-    if (this.insideRoundaboutIds.has(rule.id) && dCenter > rule.radius + 1) {
-      console.log(`[${this.id}] 🏁 sale de ${rule.id}, dCenter=${dCenter.toFixed(1)} > R+1`);
-      this.insideRoundaboutIds.delete(rule.id);
-      // además liberamos el “stop” si venía de aquí
-      if (this.stopped) {
-        console.log(`[${this.id}] 🔓 desbloqueo tras salir de ${rule.id}`);
-        this.stopped = false;
+  reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
+    // ─── 0) Limpieza de salidas de rotonda ───────────────────────
+    for (const rule of rules) {
+      if (rule.type !== "roundabout") continue;
+      const dCenter = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
+      if (this.insideRoundaboutIds.has(rule.id) && dCenter > rule.radius + 1) {
+        console.log(`[${this.id}] 🏁 sale de ${rule.id}, dCenter=${dCenter.toFixed(1)} > R+1`);
+        this.insideRoundaboutIds.delete(rule.id);
+        // además liberamos el “stop” si venía de aquí
+        if (this.stopped) {
+          console.log(`[${this.id}] 🔓 desbloqueo tras salir de ${rule.id}`);
+          this.stopped = false;
+        }
       }
     }
-  }
 
-  // ─── 1) Si ya estoy detenido, dejo que stopTimer haga su trabajo ─────
-  if (this.stopped) {
-    console.log(`[${this.id}] detenido por regla, stopTimer=${this.stopTimer.toFixed(2)}`);
-    return;
-  }
+    // ─── 1) Si ya estoy detenido, dejo que stopTimer haga su trabajo ─────
+    if (this.stopped) {
+      console.log(`[${this.id}] detenido por regla, stopTimer=${this.stopTimer.toFixed(2)}`);
+      return;
+    }
 
-  let shouldSlowDown = false;
+    let shouldSlowDown = false;
 
-  for (const rule of rules) {
-    const d = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
+    for (const rule of rules) {
+      const d = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
 
-    // ─── ROTONDAS ───────────────────────────
-    if (rule.type === "roundabout") {
-      const isInside = d < rule.radius;
+      // ─── ROTONDAS ───────────────────────────
+      if (rule.type === "roundabout") {
+        const isInside = d < rule.radius;
 
-      if (isInside) {
-        if (!this.insideRoundaboutIds.has(rule.id)) {
-          console.log(`[${this.id}] 🚗 entra en ${rule.id}, d=${d.toFixed(1)} < R=${rule.radius}`);
-          this.insideRoundaboutIds.add(rule.id);
+        if (isInside) {
+          if (!this.insideRoundaboutIds.has(rule.id)) {
+            console.log(`[${this.id}] 🚗 entra en ${rule.id}, d=${d.toFixed(1)} < R=${rule.radius}`);
+            this.insideRoundaboutIds.add(rule.id);
+          }
+          // mantengo ENTRY_LIMIT mientras estoy dentro
+          this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
+          shouldSlowDown = true;
+          continue;
         }
-        // mantengo ENTRY_LIMIT mientras estoy dentro
-        this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
-        shouldSlowDown = true;
-        continue;
-      }
 
-      // aproximación
-      const brakingDist = Math.max(0,
-        (this.speed*this.speed - ENTRY_LIMIT*ENTRY_LIMIT)/(2*this.acceleration)
-      );
-      const isApproaching = d < rule.radius + brakingDist + EXTRA_MARGIN;
-
-      if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
-        console.log(
-          `[${this.id}] 🛑 acercándose a ${rule.id}, d=${d.toFixed(1)} < R+brake+margin=${(rule.radius+brakingDist+EXTRA_MARGIN).toFixed(1)}`
+        // aproximación
+        const brakingDist = Math.max(0,
+          (this.speed * this.speed - ENTRY_LIMIT * ENTRY_LIMIT) / (2 * this.acceleration)
         );
-        const carsInside = others.filter(o => o.insideRoundaboutIds.has(rule.id));
-        if (carsInside.length > 0) {
-          console.log(`[${this.id}] ⏸ stop-and-wait en ${rule.id}, cochesInside=${carsInside.length}`);
-          this.stopped = true;
-          this.stopTimer = 1.0;
-          this.speed = 0;
-          this.targetSpeed = 0;
-          return;
+        const isApproaching = d < rule.radius + brakingDist + EXTRA_MARGIN;
+
+        if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
+          console.log(
+            `[${this.id}] 🛑 acercándose a ${rule.id}, d=${d.toFixed(1)} < R+brake+margin=${(rule.radius + brakingDist + EXTRA_MARGIN).toFixed(1)}`
+          );
+          const carsInside = others.filter(o => o.insideRoundaboutIds.has(rule.id));
+          if (carsInside.length > 0) {
+            console.log(`[${this.id}] ⏸ stop-and-wait en ${rule.id}, cochesInside=${carsInside.length}`);
+            this.stopped = true;
+            this.stopTimer = 1.0;
+            this.speed = 0;
+            this.targetSpeed = 0;
+            return;
+          }
+          console.log(`[${this.id}] 🔄 freno a ENTRY_LIMIT antes de entrar en ${rule.id}`);
+          this.speed = Math.min(this.speed, ENTRY_LIMIT);
+          this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
+          shouldSlowDown = true;
         }
-        console.log(`[${this.id}] 🔄 freno a ENTRY_LIMIT antes de entrar en ${rule.id}`);
-        this.speed = Math.min(this.speed, ENTRY_LIMIT);
-        this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
+      }
+
+      // ─── CEDA EL PASO GENÉRICO ──────────────
+      if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
+        console.log(`[${this.id}] ⚠️ ceda el paso en ${rule.id}, d=${d.toFixed(1)}`);
+        this.targetSpeed = Math.min(this.targetSpeed, 1.0);
         shouldSlowDown = true;
       }
     }
 
-    // ─── CEDA EL PASO GENÉRICO ──────────────
-    if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
-      console.log(`[${this.id}] ⚠️ ceda el paso en ${rule.id}, d=${d.toFixed(1)}`);
-      this.targetSpeed = Math.min(this.targetSpeed, 1.0);
-      shouldSlowDown = true;
+    // ─── 3) Si no hay nada que frene, recupero velocidad ───────────
+    if (!shouldSlowDown) {
+      console.log(
+        this.insideRoundaboutIds.size
+          ? `[${this.id}] sigo dentro de rotonda(s), mantengo ENTRY_LIMIT`
+          : `[${this.id}] ✅ fuera de todas las rotondas, recupero velocidad normal`
+      );
+      this.targetSpeed = this.insideRoundaboutIds.size ? ENTRY_LIMIT : this.currentStepSpeed;
     }
   }
-
-  // ─── 3) Si no hay nada que frene, recupero velocidad ───────────
-  if (!shouldSlowDown) {
-    console.log(
-      this.insideRoundaboutIds.size
-        ? `[${this.id}] sigo dentro de rotonda(s), mantengo ENTRY_LIMIT`
-        : `[${this.id}] ✅ fuera de todas las rotondas, recupero velocidad normal`
-    );
-    this.targetSpeed = this.insideRoundaboutIds.size ? ENTRY_LIMIT : this.currentStepSpeed;
-  }
-}
 
 
 
@@ -248,13 +248,6 @@ reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
 
   /** Registra una fila cada 50 m (= 0.05 km) */
   public maybeLog(car: CarAgent, simTime: number) {
-    const traveledKm = car.totalDistance; // km acumulados
-    const prevKm = lastKm[car.id] ?? 0;
-
-    if (traveledKm - prevKm < 0.05) return; // aún no llegó a 50 m
-
-    lastKm[car.id] = traveledKm; // actualiza referencia
-
     const row: TelemetryRow = {
       id: car.id,
       ts: Date.now(),
@@ -262,13 +255,12 @@ reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
       lng: car.position[0],
       speedKmh: car.speed * 3.6,
       direction: car.lastRotation,
-      distance: traveledKm,
+      distance: car.totalDistance, // km
       simTime,
     };
-
-    (telemetry[car.id] ??= []).push(row);
+    
+    (rawTelemetry[car.id] ??= []).push(row);
   }
-
   updatePosition(dt: number) {
     /* -----------------------------------------
        0.  Copia posición previa

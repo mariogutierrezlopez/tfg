@@ -2,7 +2,6 @@ import { CarAgent } from "../logic/agents/CarAgents";
 import { carOptions } from "../constants/carOptions";
 import Papa from "papaparse";
 import mapboxgl from "mapbox-gl";
-import { telemetry, TelemetryRow } from "./telemetryStore";
 import { TrafficElement } from "./types";
 import { drawRoundaboutEntryZone } from "./mapSetup";
 
@@ -125,20 +124,64 @@ export function importScenarioFromCsv(
     }
   });
 }
+// utils/csvUtils.ts
+import { rawTelemetry, TelemetryRow } from './telemetryStore';
 
-/** Convierte toda la telemetría acumulada a CSV y lanza la descarga */
+export type Criterion = 'meters' | 'seconds';
+
+export let exportConfig: { criterion: Criterion; interval: number } = {
+  criterion: 'meters',
+  interval: 50,
+};
+
+export function setExportConfig(config: { criterion: Criterion; interval: number }) {
+  exportConfig = config;
+}
+
 export function exportTelemetryToCsv() {
+  const { criterion, interval } = exportConfig;
+
   const header =
     "carId,timestampUTC,lat,lng,speedKmh,directionDeg,distanceKm,simTimeSec\n";
 
-  /* aplanamos las filas de todos los coches */
-  const rows: TelemetryRow[] = Object.values(telemetry).flat();
+  // Para cada coche, filtramos sus rawTelemetry según el criterio:
+  const filteredRows: TelemetryRow[] = [];
 
-  /* orden opcional por tiempo */
-  rows.sort((a, b) => a.ts - b.ts);
+  for (const [carId, rows] of Object.entries(rawTelemetry)) {
+    if (rows.length === 0) continue;
 
+    // orden por simTime (o distance) ascendente
+    const sorted = [...rows].sort((a, b) =>
+      (criterion === 'meters' ? a.distance - b.distance : a.simTime - b.simTime)
+    );
+
+    if (criterion === 'meters') {
+      const kmStep = interval / 1000;
+      let nextThreshold = kmStep;
+      for (const r of sorted) {
+        if (r.distance >= nextThreshold) {
+          filteredRows.push(r);
+          nextThreshold += kmStep;
+        }
+      }
+    } else {
+      // segundos
+      let nextThreshold = interval;
+      for (const r of sorted) {
+        if (r.simTime >= nextThreshold) {
+          filteredRows.push(r);
+          nextThreshold += interval;
+        }
+      }
+    }
+  }
+
+  // orden final por timestamp para mezclar todos los coches
+  filteredRows.sort((a, b) => a.ts - b.ts);
+
+  // construir CSV
   const csv = header +
-    rows
+    filteredRows
       .map(r =>
         [
           r.id,
@@ -153,7 +196,7 @@ export function exportTelemetryToCsv() {
       )
       .join("\n");
 
-  /* descarga */
+  // descarga
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url  = URL.createObjectURL(blob);
 

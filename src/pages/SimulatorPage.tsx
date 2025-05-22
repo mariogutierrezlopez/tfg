@@ -27,7 +27,8 @@ import ScenarioGalleryModal from "../components/organisms/scenariogallerymodal/S
 import { drawCarRoute } from "../utils/mapUtils";
 import { addRoadClickableLayer } from "../utils/mapLayers";
 import { FaFileCsv, FaChartLine } from "react-icons/fa";
-import { exportTelemetryToCsv } from "../utils/csvUtils";
+import { exportTelemetryToCsv, setExportConfig   } from "../utils/csvUtils";
+import { ExportModal } from "../components/organisms/exportmodal/exportModal";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -65,6 +66,9 @@ const SimulatorApp: React.FC = () => {
   //Estados para los coches
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const selectedCar = agentsRef.current.find((car) => car.id === selectedCarId);
+
+  //Modal para exportar telemetría
+  const [showModal, setShowModal] = useState(false);
 
   useSimulationLoop({
     agentsRef,
@@ -330,11 +334,20 @@ const SimulatorApp: React.FC = () => {
             </button>
             <button
               className="export-btn"
-              onClick={exportTelemetryToCsv}
+              onClick={() => { setShowModal(true) }}
               title="Descargar telemetría CSV"
             >
               <FaChartLine className="export-icon" />
             </button>
+
+            <ExportModal
+              isOpen={showModal}
+              onClose={() => setShowModal(false)}
+              onConfirm={(criterion, interval) => {
+                setExportConfig({criterion, interval});
+                exportTelemetryToCsv();
+                setShowModal(false);
+              }}/>
           </div>
         </>
       )}
