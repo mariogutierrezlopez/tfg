@@ -44,12 +44,20 @@ export const useRouteCalculation = ({
       const destination = customDestination ?? destinationCoords;
       const skipFit = opt?.skipFitBounds ?? false;
 
-      /* validación básica */
       if (
-        !origin || !destination ||
-        origin.some(isNaN) || destination.some(isNaN)
+        !origin ||
+        !destination ||
+        !Array.isArray(origin) ||
+        !Array.isArray(destination) ||
+        origin.length !== 2 ||
+        destination.length !== 2 ||
+        isNaN(origin[0]) ||
+        isNaN(origin[1]) ||
+        isNaN(destination[0]) ||
+        isNaN(destination[1])
       ) {
         setRouteStatus("error");
+        console.error("Invalid coordinates for route calculation", { origin, destination });
         return null;
       }
 

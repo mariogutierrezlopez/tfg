@@ -10,6 +10,7 @@ import distance from "@turf/distance";
 import { CarOption } from "../../utils/types";
 import { destination, bearing } from "@turf/turf";
 import { rawTelemetry, TelemetryRow } from "../../utils/telemetryStore";
+import { evalTree, TreeNode } from "../roundaboutsDecisions";
 
 
 // Constantes de configuracion
@@ -31,6 +32,7 @@ export class CarAgent extends TrafficAgent {
   targetSpeed = 0;
   currentStepSpeed: number = 0; // velocidad actual del paso
   prevPosition: [number, number];
+  private decisionTree: TreeNode | null;
 
   constructor(
     id: string,
@@ -38,7 +40,8 @@ export class CarAgent extends TrafficAgent {
     route: [number, number][],
     marker: mapboxgl.Marker,
     carType: CarOption,
-    public stepSpeeds: number[] = []
+    public stepSpeeds: number[] = [],
+    decisionTree: TreeNode | null = null
   ) {
     super(id, position, route, marker, carType.id);
     this.maxSpeed = 100;
@@ -47,6 +50,7 @@ export class CarAgent extends TrafficAgent {
     this.carType = carType;
     this.prevPosition = [...position]; // ⬅️ Añade esta línea
     console.log(`[${id}] CarAgent creado con stepSpeeds:`, stepSpeeds);
+    this.decisionTree = decisionTree;
   }
 
   private getCurrentStepSpeed(): number {
@@ -60,9 +64,75 @@ export class CarAgent extends TrafficAgent {
     return this.stepSpeeds[Math.min(idx, this.stepSpeeds.length - 1)] ?? this.maxSpeed;
   }
 
+    private distanceToRoundaboutCenter(rules: TrafficElement[]): number {
+    const round = rules.find(r => r.type === "roundabout");
+    if (!round) return Infinity;
+    return distance(
+      turfPoint(this.position),
+      turfPoint(round.location),
+      { units: "meters" }
+    );
+  }
+
 
 
   reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
+
+    // ─── 1) Si hay árbol de reglas dinámico, úsalo ────────────────
+    if (this.decisionTree) {
+      // Extrae el roundabout más cercano (si existe)
+      const round = rules.find(r => r.type === "roundabout");
+      const distY = round
+        ? distance(
+            turfPoint(this.position),
+            turfPoint(round.location),
+            { units: "meters" }
+          )
+        : Infinity;
+
+      // Prepara los inputs según tu JSON:
+      const inputs: Record<string, number> = {
+        speedVRnd: this.speed,               // velocidad actual (m/s)
+        distY,                               // distancia al centro de la rotonda (m)
+        speedL: this.currentStepSpeed,       // la velocidad objetivo del segmento
+        Dist_YL: this.insideRoundaboutIds.has(round?.id ?? "") ? 1 : 0,
+        Dist_YN: this.insideRoundaboutIds.has(round?.id ?? "") ? 0 : 1,
+        Lz: this.stopped ? 1 : 0,            // por ejemplo: si está detenido
+      };
+
+      const action = evalTree(this.decisionTree, inputs);
+      switch (action) {
+        case "GD":
+          this.targetSpeed = this.maxSpeed;
+          break;
+        case "T-HOLD":
+          this.speed = 0;
+          break;
+        case "T-OFF":
+          this.targetSpeed = 0;
+          break;
+        case "B-ON":
+          this.targetSpeed = 0;
+          break;
+        case "T-ON":
+          this.targetSpeed = this.currentStepSpeed;
+          break;
+        case "LB-ON":
+          this.targetSpeed = Math.min(this.currentStepSpeed, ENTRY_LIMIT);
+          break;
+        case "RND-MD":
+        case "RND-IN":
+          this.targetSpeed = ENTRY_LIMIT;
+          break;
+        case "STOP":
+          this.speed = 0;
+          break;
+        default:
+          // acción desconocida → no haces nada
+          break;
+      }
+      return;
+    }
     // ─── 0) Limpieza de salidas de rotonda ───────────────────────
     for (const rule of rules) {
       if (rule.type !== "roundabout") continue;

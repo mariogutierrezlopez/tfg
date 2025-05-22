@@ -28,7 +28,7 @@ import { drawCarRoute } from "../utils/mapUtils";
 import { addRoadClickableLayer } from "../utils/mapLayers";
 import { FaFileCsv, FaChartLine } from "react-icons/fa";
 import { exportTelemetryToCsv, setExportConfig   } from "../utils/csvUtils";
-import { ExportModal } from "../components/organisms/exportmodal/exportModal";
+import { ExportModal } from "../components/organisms/exportmodal/ExportModal";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 

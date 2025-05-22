@@ -10,6 +10,7 @@ import { fetchRouteFrom } from "../utils/routeUtils";
 import { TrafficElement } from "../utils/types";
 import { mergeTrafficRules } from "../utils/mergeTrafficRules";
 import { drawCarRoute } from "../utils/mapUtils";
+import { useRules } from "../context/rulesContext";
 
 export const useCarManager = (
   mapInstance: mapboxgl.Map | null,
@@ -32,6 +33,8 @@ export const useCarManager = (
   ) => Promise<{ routeData: any; trafficRules: TrafficElement[] } | null>,
   setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>
 ) => {
+
+  const {tree} = useRules();
   /* ───────────────────────────────────────────── */
   /* Handler de clic en el mapa                   */
   /* ───────────────────────────────────────────── */
@@ -87,7 +90,7 @@ export const useCarManager = (
       const destination: [number, number] =
         destinationCoords ?? [origin[0] + 0.01, origin[1] + 0.01];
 
-      const out = await handleRouteCalculation(origin, destination, { skipFitBounds: true });
+      const out = await handleRouteCalculation(origin, destination);
       if (!out) return;
 
       const { routeData, trafficRules } = out;
@@ -102,7 +105,8 @@ export const useCarManager = (
         destination,
         selectedCarType,
         newId,
-        () => setSelectedCarId(newId)
+        () => setSelectedCarId(newId),
+        tree
       );
 
       /* pinta su línea + pin destino */
@@ -118,6 +122,7 @@ export const useCarManager = (
       setSelectedCarId,
       setCarPendingRouteChange,
       setTrafficRules,
+      tree
     ]
   );
 
@@ -142,7 +147,8 @@ export const useCarManager = (
         setSelectedCarId,
         setShowCarSelector,
         setShowSimulationControls,
-        setSelectionSent
+        setSelectionSent,
+        tree
       );
     },
   };

@@ -8,6 +8,8 @@ import { attachMeterScaling } from "./attachMeterScaling";
 import { vehicleSizes } from "./types";
 import { fetchRouteWithSpeeds } from "../utils/mapboxDirections";
 import { resampleRoute } from "./resampleRoute";
+import type { TreeNode } from "./decisionTree";
+import { TreeNode } from "../logic/roundaboutsDecisions";
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
@@ -43,70 +45,6 @@ export const createCarIcon = (
 };
 
 /* ------------------------------------------------------------------ */
-/* addCarMarker                                                        */
-/* ------------------------------------------------------------------ */
-export const addCarMarker = async (
-  coord: [number, number],
-  map: mapboxgl.Map,
-  selectedCarType: CarOption,
-  destinationCoords: [number, number] | null,
-  agentsRef: React.MutableRefObject<CarAgent[]>,
-  setSelectedCarId: (id: string) => void,
-  token: string,
-  handleRouteCalculation: (
-    origin: [number, number],
-    destination: [number, number],
-    opt?: { skipFitBounds?: boolean }
-  ) => Promise<{ routeData: any; trafficRules: TrafficElement[] } | null>,
-  setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>
-) => {
-  /* 1) calcula ruta ---------------------------------------------------- */
-  const dest = destinationCoords ?? [coord[0] + 0.01, coord[1] + 0.01];
-  const out = await handleRouteCalculation(coord, dest, { skipFitBounds: true });
-  if (!out) return;
-  const { routeData, trafficRules: newRules } = out;
-
-  /* 2) fusiona reglas -------------------------------------------------- */
-  setTrafficRules(prev => mergeTrafficRules(prev, newRules));
-
-  /* 3) tamaños físicos ------------------------------------------------- */
-  const sizeCfg = vehicleSizes[selectedCarType.id as keyof typeof vehicleSizes] ?? { w: 36, h: 60 };
-  const wM = (sizeCfg as any).wM ?? sizeCfg.w / 20; // ≈ 5 cm/px
-  const lM = (sizeCfg as any).lM ?? sizeCfg.h / 20;
-
-  /* 4) marker ---------------------------------------------------------- */
-  const agentId = crypto.randomUUID();
-  const start = routeData.coordinates[0];
-
-  const marker = new mapboxgl.Marker({
-    element: createCarIcon(selectedCarType.image, selectedCarType.id, agentId,
-      () => setSelectedCarId(agentId)),
-    rotationAlignment: "map",
-    pitchAlignment: "map",
-    anchor: "center",
-  })
-    .setLngLat(start)
-    .addTo(map);
-
-  /* 5) escalado real en metros ---------------------------------------- */
-  const detach = attachMeterScaling(map, marker, wM, lM);
-
-  /* 6) agente ---------------------------------------------------------- */
-  const agent = new CarAgent(
-    agentId,
-    start,
-    routeData.coordinates,
-    marker,
-    selectedCarType,
-    routeData.stepSpeeds
-  );
-  (agent as any).detachZoom = detach;
-  agent.targetSpeed = agent.maxSpeed;
-
-  agentsRef.current.push(agent);
-};
-
-/* ------------------------------------------------------------------ */
 /* spawnCar genérico                      */
 /* ------------------------------------------------------------------ */
 export async function spawnCar(
@@ -117,6 +55,7 @@ export async function spawnCar(
   carType       : CarOption,
   carId         : string,                       // "main-car", randomId…
   onClickMarker : () => void,
+  decisionTree  : TreeNode | null
 ){
   /* 1. ruta + límites ------------------------------------------ */
   const { geometry, stepSpeeds } =
@@ -160,7 +99,8 @@ export async function spawnCar(
     geometry.slice(1),       // resto ruta
     marker,
     carType,
-    stepSpeeds
+    stepSpeeds,
+    decisionTree
   );
   (agent as any).detachZoom = detach;
 
@@ -178,6 +118,7 @@ export async function spawnMainCar(
   setShowCarSelector : (b: boolean) => void,
   setShowSimControls : (b: boolean) => void,
   setSelectionSent   : (b: boolean) => void,
+  decisionTree       : TreeNode | null
 ) {
   /* 1) delegamos todo el trabajo pesado en spawnCar */
   await spawnCar(
@@ -188,6 +129,7 @@ export async function spawnMainCar(
     carType,
     "main-car",               // ← id fijo
     () => setSelectedCarId("main-car"),
+    decisionTree
   );
 
   /* 2) encendemos la UI */

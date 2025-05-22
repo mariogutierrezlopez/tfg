@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+// src/components/SearchForm.tsx
+import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 import { SearchBox } from "@mapbox/search-js-react";
+import { useRules } from "../../../context/rulesContext";  // ← tu contexto
 import "./SearchForm.css";
 
 interface Props {
@@ -14,7 +16,7 @@ interface Props {
   setShowGallery: (b: boolean) => void;
   handleSearchSelection: (feature: GeoJSON.Feature, isOrigin: boolean) => void;
   onCalculateRoute: () => void;
-  onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   inputMode: "search" | "manual" | "csv";
   setInputMode: (mode: "search" | "manual" | "csv") => void;
 }
@@ -35,155 +37,170 @@ const SearchForm: React.FC<Props> = ({
   inputMode,
   setInputMode,
 }) => {
+  const { setTree } = useRules();              // ← sacamos setTree del contexto
+  const [rulesLoaded, setRulesLoaded] = useState(false);
+
   const [sessionToken] = useState(() => crypto.randomUUID());
-  const activeTab = inputMode;
-
-  const handleSwap = () => {
-    setOriginText(destinationText);
-    setDestinationText(originText);
-
-    if (originCoords && destinationCoords) {
-      setOriginCoords(destinationCoords);
-      setDestinationCoords(originCoords);
-    }
-  };
-
-  // Scroll horizontal en tabs
   const tabRef = useRef<HTMLDivElement>(null);
+  const canCalculate = !!originCoords && !!destinationCoords;
 
+  // scroll en las tabs
   useEffect(() => {
     const tabEl = tabRef.current;
     if (!tabEl) return;
-
-    const handleWheel = (e: WheelEvent) => {
+    const handler = (e: WheelEvent) => {
       if (e.deltaY !== 0) {
         e.preventDefault();
         tabEl.scrollLeft += e.deltaY;
       }
     };
-
-    tabEl.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      tabEl.removeEventListener("wheel", handleWheel);
-    };
+    tabEl.addEventListener("wheel", handler, { passive: false });
+    return () => tabEl.removeEventListener("wheel", handler);
   }, []);
+
+  // Cuando el usuario sube el JSON de reglas...
+  const handleRulesFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      setTree(parsed);         // ← actualizamos las reglas en el context
+      setRulesLoaded(true);    // cambiamos a true para que salgan las tabs
+    } catch (err) {
+      console.error("Error al parsear JSON de reglas:", err);
+      alert("El JSON de reglas no es válido.");
+    }
+  };
 
   return (
     <div className="search-form-container">
-      {/* Tabs */}
-      <div className="tab-buttons" ref={tabRef}>
-        <button
-          className={`tab-btn ${activeTab === "search" ? "tab-btn--active" : ""}`}
-          onClick={() => setInputMode("search")}
-        >
-          Origen/Destino
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "manual" ? "tab-btn--active" : ""}`}
-          onClick={() => setInputMode("manual")}
-        >
-          Selección en mapa
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "csv" ? "tab-btn--active" : ""}`}
-          onClick={() => setInputMode("csv")}
-        >
-          Importar CSV
-        </button>
-      </div>
-  
-      {/* Tab: Búsqueda Origen/Destino */}
-      {activeTab === "search" && (
-        <div className="search-form-inner">
-          <label className="form-label">Origen</label>
-          <SearchBox
-            accessToken={import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN}
-            value={originText}
-            options={{ sessionToken }}
-            placeholder="Introduce origen"
-            onChange={(e) => setOriginText(e.target.value)}
-            onRetrieve={(res) => {
-              const feature = res.features?.[0];
-              if (feature) handleSearchSelection(feature, true);
-            }}
+      { !rulesLoaded ? (
+        <div className="rules-upload-container">
+          <h2>⚙️ Carga tus reglas de decisión</h2>
+          <p>Antes de poder elegir origen/destino o modo CSV, sube tu JSON de reglas.</p>
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleRulesFile}
           />
-  
-          <label className="form-label">Destino</label>
-          <SearchBox
-            accessToken={import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN}
-            value={destinationText}
-            options={{ sessionToken }}
-            placeholder="Introduce destino"
-            onChange={(e) => setDestinationText(e.target.value)}
-            onRetrieve={(res) => {
-              const feature = res.features?.[0];
-              if (feature) handleSearchSelection(feature, false);
-            }}
-          />
-  
-          <div className="search-form-buttons">
+        </div>
+      ) : (
+        <>
+          {/* ─── PESTAÑAS ─── */}
+          <div className="tab-buttons" ref={tabRef}>
             <button
-              className="btn btn-outline-secondary"
-              onClick={handleSwap}
+              className={`tab-btn ${inputMode === "search" ? "tab-btn--active" : ""}`}
+              onClick={() => setInputMode("search")}
             >
-              Intercambiar
+              Origen/Destino
+            </button>
+            <button
+              className={`tab-btn ${inputMode === "manual" ? "tab-btn--active" : ""}`}
+              onClick={() => setInputMode("manual")}
+            >
+              Selección en mapa
+            </button>
+            <button
+              className={`tab-btn ${inputMode === "csv" ? "tab-btn--active" : ""}`}
+              onClick={() => setInputMode("csv")}
+            >
+              Importar CSV
             </button>
           </div>
-        </div>
-      )}
-  
-      {/* Tab: Selección manual */}
-      {activeTab === "manual" && (
-        <div className="search-form-inner text-muted">
-          <p className="mb-2">
-            Selecciona punto A y B directamente en el mapa. Usa{" "}
-            <strong>Shift + clic</strong> para marcar cada uno.
-          </p>
-          <p>
-            Esta funcionalidad se implementa con listeners en el mapa
-            (no hay inputs aquí).
-          </p>
-        </div>
-      )}
-  
-      {/* Tab: Importar CSV */}
-      {activeTab === "csv" && (
-        <div className="search-form-inner">
-          <label className="form-label">
-            Importar archivo CSV
-            <input type="file" onChange={onFileUpload} />
-          </label>
-  
-          <div className="csv-import-container mt-3">
-            <p className="mb-0 d-inline">
-              Puedes importar un archivo CSV o explorar la{" "}
-              <button
-                className="btn btn-link p-0 d-inline"
-                onClick={() => setShowGallery(true)}
-              >
-                galería de escenarios configurados
-              </button>
-              .
-            </p>
-          </div>
-        </div>
-      )}
-  
-      {/* Botón calcular ruta (oculto en modo CSV) */}
-      {activeTab !== "csv" && (
-        <button
-        className="btn btn-primary mt-3 w-100"
-        onClick={() => onCalculateRoute()}   
-      >
-        Calcular ruta
-      </button>
+
+          {/* ─── MODO SEARCH ─── */}
+          {inputMode === "search" && (
+            <div className="search-form-inner">
+              <label className="form-label">Origen</label>
+              <SearchBox
+                accessToken={import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN}
+                value={originText}
+                options={{ sessionToken }}
+                placeholder="Introduce origen"
+                onChange={e => setOriginText(e.target.value)}
+                onRetrieve={res => {
+                  const f = res.features?.[0];
+                  if (f) handleSearchSelection(f, true);
+                }}
+              />
+
+              <label className="form-label">Destino</label>
+              <SearchBox
+                accessToken={import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN}
+                value={destinationText}
+                options={{ sessionToken }}
+                placeholder="Introduce destino"
+                onChange={e => setDestinationText(e.target.value)}
+                onRetrieve={res => {
+                  const f = res.features?.[0];
+                  if (f) handleSearchSelection(f, false);
+                }}
+              />
+
+              <div className="search-form-buttons">
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={() => {
+                    setOriginText(destinationText);
+                    setDestinationText(originText);
+                    if (originCoords && destinationCoords) {
+                      setOriginCoords(destinationCoords);
+                      setDestinationCoords(originCoords);
+                    }
+                  }}
+                >
+                  Intercambiar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── MODO MANUAL ─── */}
+          {inputMode === "manual" && (
+            <div className="search-form-inner text-muted">
+              <p className="mb-2">
+                Selecciona punto A y B en el mapa (Shift + clic).
+              </p>
+            </div>
+          )}
+
+          {/* ─── MODO CSV ─── */}
+          {inputMode === "csv" && (
+            <div className="search-form-inner">
+              <label className="form-label">
+                Importar CSV
+                <input type="file" onChange={onFileUpload} />
+              </label>
+              <div className="csv-import-container mt-3">
+                <p className="mb-0 d-inline">
+                  O explora la{" "}
+                  <button
+                    className="btn btn-link p-0 d-inline"
+                    onClick={() => setShowGallery(true)}
+                  >
+                    galería de escenarios
+                  </button>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ─── BOTÓN CALCULAR ─── */}
+          {inputMode !== "csv" && (
+            <button
+              className="btn btn-primary mt-3 w-100"
+              onClick={() => onCalculateRoute()}
+              disabled={!canCalculate}
+              title={!canCalculate ? "Debes seleccionar origen y destino" : undefined}
+            >
+              Calcular ruta
+            </button>
+          )}
+        </>
       )}
     </div>
   );
-  
 };
 
 export default SearchForm;
