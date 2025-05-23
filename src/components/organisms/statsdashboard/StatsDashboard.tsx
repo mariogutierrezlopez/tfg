@@ -62,40 +62,42 @@ const StatsDashboard: React.FC<Props> = ({
   simulationSpeed,
   isPlaying,
 }) => {
-  // Si no hay agentes, mostramos placeholder
   if (carAgents.length === 0) {
     return (
-      <div
-        className="stats-placeholder"
-      >
+      <div className="stats-placeholder">
         <h3>Aquí se mostrarán las estadísticas de los vehículos</h3>
         <p>Selecciona una ruta para visualizar velocidad, posición y más.</p>
       </div>
     );
   }
 
-  // 1) Opciones de selector
   const agentOptions: AgentOption[] = carAgents.map((a) => ({
     id: a.id,
     label: `Coche ${a.id}`,
   }));
   const [selected, setSelected] = useState<AgentOption[]>([]);
 
-  // 2) Datos de la gráfica
+  // — Datos para la gráfica —
   const [chartData, setChartData] = useState<any[]>([]);
-  const firstTs = useRef<number | null>(null);
+  const startedRef = useRef(false);       // ¿Ya hemos pulsado “play”?
+  const simTimeRef = useRef(0);           // tiempo simulado acumulado (s)
+  const lastSimRef = useRef(Date.now());  // para medir delta real
 
-  // 3) Estados para calcular stats
+  // — Estadísticas internas —
   const prevPos = useRef(new Map<string, [number, number]>()).current;
-  const lastTs = useRef(new Map<string, number>()).current;
+  const lastUpdate = useRef(new Map<string, number>()).current;
   const totalDist = useRef(new Map<string, number>()).current;
   const totalTime = useRef(new Map<string, number>()).current;
   const statsMap = useRef(new Map<string, any>()).current;
 
-  // Efecto A: cada 200ms recalculamos la estadística y rellenamos statsMap
+  // — Efecto A: recalcula statsMap cada 200ms usando distancia/tiempo real —
   useEffect(() => {
+    const intervalMs = 200;
+    const FIXED_DT = 0.016;
+
     const iv = setInterval(() => {
       const now = Date.now();
+      const dtSim = FIXED_DT * simulationSpeed;
 
       selected.forEach((opt) => {
         const agent = carAgents.find((a) => a.id === opt.id);
@@ -103,29 +105,29 @@ const StatsDashboard: React.FC<Props> = ({
 
         const pos = agent.position;
         const prev = prevPos.get(opt.id);
-        const last = lastTs.get(opt.id) ?? now;
-        const dt = (now - last) / 1000;
+        const lastTime = lastUpdate.get(opt.id) ?? now;
+        const deltaTime = (now - lastTime) / 1000;
 
+        // velocidad real (m/s → km/h)
         let speedKmh = 0;
-        if (prev && isPlaying && dt > 0) {
+        if (prev && isPlaying && deltaTime > 0) {
           const dMeters = distance(
             turfPoint(prev),
             turfPoint(pos),
             { units: "meters" }
           );
-          speedKmh = (dMeters / dt) * 3.6;
-
-          // acumulamos distancia (km)
-          const accDist = (totalDist.get(opt.id) ?? 0) + dMeters / 1000;
-          totalDist.set(opt.id, accDist);
-
-          // acumulamos tiempo real
-          const accTime = (totalTime.get(opt.id) ?? 0) + 0.2 * simulationSpeed;
-          totalTime.set(opt.id, accTime);
+          speedKmh = (dMeters / deltaTime) * 3.6;
+          totalDist.set(opt.id, (totalDist.get(opt.id) ?? 0) + dMeters / 1000);
         }
 
+        // tiempo simulado acumulado
+        totalTime.set(
+          opt.id,
+          (totalTime.get(opt.id) ?? 0) + (isPlaying ? dtSim : 0)
+        );
+
         prevPos.set(opt.id, pos);
-        lastTs.set(opt.id, now);
+        lastUpdate.set(opt.id, now);
 
         const direction = agent.marker.getRotation();
         const distKm = totalDist.get(opt.id) ?? 0;
@@ -140,41 +142,56 @@ const StatsDashboard: React.FC<Props> = ({
           time: tElapsed,
         });
       });
-    }, 200);
+    }, intervalMs);
 
     return () => clearInterval(iv);
   }, [selected, carAgents, isPlaying, simulationSpeed]);
 
-  // Efecto B: cada 200ms añadimos punto a chartData solo si isPlaying
+  // — Al primer play: reiniciar todo y marcar startedRef —
   useEffect(() => {
+    if (isPlaying && !startedRef.current) {
+      simTimeRef.current = 0;
+      lastSimRef.current = Date.now();
+      setChartData([]);
+      startedRef.current = true;
+    }
+  }, [isPlaying]);
+
+  // — Efecto B: añade puntos solo cuando isPlaying === true —
+  useEffect(() => {
+    const intervalMs = 200;
+
     const iv = setInterval(() => {
-      if (!isPlaying) return;
+      if (!startedRef.current) return;
 
       const now = Date.now();
-      if (firstTs.current === null) firstTs.current = now;
+      const delta = (now - lastSimRef.current) / 1000;
 
-      const entry: any = { time: now };
-      selected.forEach((opt) => {
-        const s = statsMap.get(opt.id) || { speed: 0 };
-        entry[opt.id] = s.speed;
-      });
+      if (isPlaying) {
+        simTimeRef.current += delta;
+        const elapsed = Math.floor(simTimeRef.current);
 
-      setChartData((cd) => [...cd.slice(-1000), entry]);
-    }, 200);
+        const entry: any = { time: elapsed };
+        selected.forEach((opt) => {
+          const s = statsMap.get(opt.id) || { speed: 0 };
+          entry[opt.id] = s.speed;
+        });
+
+        setChartData((cd) => [...cd.slice(-1000), entry]);
+      }
+
+      // Actualizamos el marcador de tiempo en cualquier caso
+      lastSimRef.current = now;
+    }, intervalMs);
 
     return () => clearInterval(iv);
-  }, [selected, isPlaying, simulationSpeed]);
-
-  // Ventana últimos 10s
-  const times = chartData.map((d) => d.time);
-  const maxTime = times.length ? Math.max(...times) : Date.now();
-  const minTime = maxTime - 10_000;
+  }, [selected, isPlaying]);
 
   const colors = ["#8884d8", "#82ca9d", "#ffc658", "#ff7300"];
 
   return (
     <div className="stats-dashboard">
-      {/* Selector */}
+      {/* Selector de coches */}
       <div className="car-selector-panel">
         {agentOptions.map((opt) => {
           const isSel = selected.some((s) => s.id === opt.id);
@@ -198,7 +215,7 @@ const StatsDashboard: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Tarjetas */}
+      {/* Tarjetas de stats */}
       <div className="stats-cards">
         {selected.map((opt) => {
           const s = statsMap.get(opt.id) || {
@@ -213,43 +230,39 @@ const StatsDashboard: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Gráfica últimos 10s */}
-      <div className="chart-container">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={chartData}
-            margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              type="number"
-              domain={[minTime, maxTime]}
-              tickFormatter={(ts) =>
-                `${Math.floor((ts - (firstTs.current || 0)) / 1000)}s`
-              }
-              tickCount={6}
-            />
-            <YAxis unit=" km/h" />
-            <Tooltip
-              labelFormatter={(ts) =>
-                `T+${((ts - (firstTs.current || 0)) / 1000).toFixed(1)}s`
-              }
-            />
-            <Legend />
-            {selected.map((opt, i) => (
-              <Line
-                key={opt.id}
-                type="monotone"
-                dataKey={opt.id}
-                stroke={colors[i % colors.length]}
-                strokeWidth={2}
-                dot={false}
+      {/* Gráfica: visible tras el primer play y permanece al pausar */}
+      {startedRef.current && (
+        <div className="chart-container">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="time"
+                type="number"
+                domain={[0, 10]}
+                tickFormatter={(sec) => `${sec}s`}
+                tickCount={6}
               />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+              <YAxis unit=" km/h" />
+              <Tooltip labelFormatter={(sec) => `T+${sec.toFixed(1)}s`} />
+              <Legend />
+              {selected.map((opt, i) => (
+                <Line
+                  key={opt.id}
+                  type="monotone"
+                  dataKey={opt.id}
+                  stroke={colors[i % colors.length]}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 };
