@@ -58,28 +58,49 @@ const SearchForm: React.FC<Props> = ({
     return () => tabEl.removeEventListener("wheel", handler);
   }, []);
 
-  // Cuando el usuario sube el JSON de reglas...
-  const handleRulesFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      setTree(parsed);         // ← actualizamos las reglas en el context
-      setRulesLoaded(true);    // cambiamos a true para que salgan las tabs
-    } catch (err) {
-      console.error("Error al parsear JSON de reglas:", err);
-      alert("El JSON de reglas no es válido.");
-    }
-  };
+
+  /** ------- Funciones para poder arrastrar un archivo al input y reconocer las reglas -------- */
+  const parseRulesFile = async (file: File) => {
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    setTree(parsed);
+    setRulesLoaded(true);
+  } catch (err) {
+    console.error("Error al parsear JSON de reglas:", err);
+    alert("El JSON de reglas no es válido.");
+  }
+};
+
+const handleRulesFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) parseRulesFile(file);
+};
+
+const handleRulesDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  e.preventDefault();
+  const file = e.dataTransfer.files?.[0];
+  if (file) parseRulesFile(file);
+};
+
+
+/** ----------- Return ------------ */
 
   return (
     <div className="search-form-container">
-      { !rulesLoaded ? (
-        <div className="rules-upload-container">
-          <h2>⚙️ Carga tus reglas de decisión</h2>
+      {!rulesLoaded ? (
+        <div className="rules-upload-container"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleRulesDrop}>
+          <h2>Carga tus reglas de decisión</h2>
           <p>Antes de poder elegir origen/destino o modo CSV, sube tu JSON de reglas.</p>
+
+          {/* envolvemos el input en un label estilo botón */}
+          <label htmlFor="rules-file" className="upload-btn">
+            <span>Subir JSON de reglas</span>
+          </label>
           <input
+            id="rules-file"
             type="file"
             accept=".json"
             onChange={handleRulesFile}

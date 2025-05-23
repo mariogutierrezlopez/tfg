@@ -9,7 +9,7 @@ const useMapDraw = (map: mapboxgl.Map | null) => {
       const draw = new MapboxDraw({
         displayControlsDefault: false,
         controls: {
-          trash: true,
+          trash: false,
         },
       });
 

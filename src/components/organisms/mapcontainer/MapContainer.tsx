@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
+import "./MapContainer.css";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -8,20 +9,24 @@ interface MapContainerProps {
 }
 
 const MapContainer: React.FC<MapContainerProps> = ({ onMapReady }) => {
-  const localRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
-    if (!localRef.current) return;
+    if (!containerRef.current) return;
 
     mapboxgl.accessToken = mapboxToken;
-
     const map = new mapboxgl.Map({
-      container: localRef.current,
+      container: containerRef.current,
       style: "mapbox://styles/mapbox/streets-v11",
       center: [-3.7038, 40.4168],
       zoom: 13,
     });
 
+    // guardamos referencia
+    mapRef.current = map;
+
+    // callback al iniciar
     onMapReady?.(map);
 
     map.on("style.load", () => {
@@ -35,11 +40,26 @@ const MapContainer: React.FC<MapContainerProps> = ({ onMapReady }) => {
     });
 
     return () => {
-      map.remove();
+      // desmontaje protegido
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (err) {
+          console.warn("⚠️ Error al desmontar el mapa:", err);
+        }
+        mapRef.current = null;
+      }
     };
-  }, []);
+  }, [onMapReady]);
 
-  return <div id="map-container" ref={localRef} style={{ height: "100vh", width: "100vw" }} />;
+  return (
+    <div
+      ref={containerRef}
+      id="map-container"
+      className="map-container"
+      style={{ height: "100%", width: "100%" }}
+    />
+  );
 };
 
 export default MapContainer;

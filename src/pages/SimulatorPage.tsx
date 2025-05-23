@@ -27,8 +27,10 @@ import ScenarioGalleryModal from "../components/organisms/scenariogallerymodal/S
 import { drawCarRoute } from "../utils/mapUtils";
 import { addRoadClickableLayer } from "../utils/mapLayers";
 import { FaFileCsv, FaChartLine } from "react-icons/fa";
-import { exportTelemetryToCsv, setExportConfig   } from "../utils/csvUtils";
+import { exportTelemetryToCsv, setExportConfig } from "../utils/csvUtils";
 import { ExportModal } from "../components/organisms/exportmodal/ExportModal";
+import StatsDashboard from "../components/organisms/statsdashboard/StatsDashboard";
+import "./SimulationPage.css";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -169,188 +171,192 @@ const SimulatorApp: React.FC = () => {
 
 
   return (
-    <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
-      <MapContainer onMapReady={onMapReady} />
+    <div className="simulator-layout">
+      {/* 60%: simulador + overlays */}
+      <div className="simulator-pane">
+        <MapContainer onMapReady={onMapReady} />
 
-      {showGallery && (
-        <ScenarioGalleryModal
-          onClose={() => setShowGallery(false)}
-          onSelectScenario={(csvPath) => {
-            fetch(csvPath)
-              .then((res) => res.blob())
-              .then((blob) => {
-                const file = new File([blob], "scenario.csv", {
-                  type: "text/csv",
-                });
-                if (mapRef.current) {
-                  importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
-                    agentsRef.current = cars;
-                    setTrafficRules(rules);              // ← guarda las reglas
-
-                    const mainCar = cars.find(c => c.id === "main-car");
-                    if (mainCar && mainCar.route.length > 1) {
-                      drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
-                    }
-
-                    addRoadClickableLayer(mapRef.current!);
-                    setShowSimulationControls(true);
-                    setShowCarSelector(true);
-                    setSelectionSent(true);
-                    setShowGallery(false);
+        {showGallery && (
+          <ScenarioGalleryModal
+            onClose={() => setShowGallery(false)}
+            onSelectScenario={(csvPath) => {
+              fetch(csvPath)
+                .then((res) => res.blob())
+                .then((blob) => {
+                  const file = new File([blob], "scenario.csv", {
+                    type: "text/csv",
                   });
-                }
-              });
-          }}
-        />
-      )}
+                  if (mapRef.current) {
+                    importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
+                      agentsRef.current = cars;
+                      setTrafficRules(rules);              // ← guarda las reglas
 
-      {!selectionSent && (
-        <SearchForm
-          originText={originText}
-          destinationText={destinationText}
-          setOriginText={setOriginText}
-          setDestinationText={setDestinationText}
-          originCoords={originCoords}
-          destinationCoords={destinationCoords}
-          setOriginCoords={setOriginCoords}
-          setDestinationCoords={setDestinationCoords}
-          setShowGallery={setShowGallery}
-          handleSearchSelection={handleSearchSelection}
-          onCalculateRoute={handleRouteCalculation}
-          onFileUpload={(e) => {
-            const file = e.target.files?.[0];
-            if (file && mapRef.current) {
-              importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
-                agentsRef.current = cars;
-                setTrafficRules(rules);
+                      const mainCar = cars.find(c => c.id === "main-car");
+                      if (mainCar && mainCar.route.length > 1) {
+                        drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
+                      }
 
-                const mainCar = cars.find((c) => c.id === "main-car");
-                if (mainCar && mainCar.route.length > 1) {
-                  drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
-                }
-
-                setShowSimulationControls(true);
-                setShowCarSelector(true);
-                setSelectionSent(true);
-              });
-            }
-          }}
-          inputMode={inputMode}
-          setInputMode={setInputMode}
-        />
-      )}
-
-      {showPostRouteView && !selectionSent && (
-        <RouteActionsPanel
-          mapRef={mapRef}
-          drawRef={drawRef}
-          mode={mode}
-          setMode={setMode}
-          onSendSelection={() => { void spawnMainCar(); }}
-        />
-      )}
-
-      {showCarSelector && (
-        <CarSelectorPanel
-          carOptions={carOptions}
-          selectedCar={selectedCarType}
-          onSelectCar={setSelectedCarType}
-        />
-      )}
-
-      {routeStatus && (
-        <div
-          className={`alert alert-${routeStatus === "success" ? "success" : "danger"
-            } alert-dismissible fade show`}
-          role="alert"
-        >
-          {routeStatus === "success"
-            ? "Ruta calculada con éxito"
-            : "Error al calcular la ruta"}
-          <button
-            type="button"
-            className="custom-close-button"
-            aria-label="Cerrar"
-            onClick={() => setRouteStatus(null)}
-          >
-            x
-          </button>
-          <div className="progress-bar-timer" />
-        </div>
-      )}
-
-      {showSimulationControls && (
-        <>
-          <SimulationControls
-            isPlaying={isPlaying}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            speed={simulationSpeed}
-            onSpeedChange={() =>
-              setSimulationSpeed((prev) => (prev === 4 ? 1 : prev * 2))
-            }
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              top: 100,
-              right: 20,
-              display: "flex",
-              flexDirection: "row",
-              gap: "16px",
-              zIndex: 1001,
+                      addRoadClickableLayer(mapRef.current!);
+                      setShowSimulationControls(true);
+                      setShowCarSelector(true);
+                      setSelectionSent(true);
+                      setShowGallery(false);
+                    });
+                  }
+                });
             }}
-          >
-            {selectedCar && (
-              <CarStatsPanel
-                car={selectedCar}
-                simulationSpeed={simulationSpeed}
-                isPlaying={isPlaying}
-                onClose={() => setSelectedCarId(null)}
-                onRequestRouteChange={(carId) => {
-                  setCarPendingRouteChange(carId);
-                  alert(
-                    "Haz clic en el mapa para elegir un nuevo destino para el coche."
-                  );
-                }}
-                onDelete={deleteCar}
-                mapRef={mapRef}
-              />
-            )}
+          />
+        )}
 
-            <CarListPanel
-              cars={agentsRef.current}
-              selectedCarId={selectedCarId}
-              onSelect={setSelectedCarId}
+        {!selectionSent && (
+          <SearchForm
+            originText={originText}
+            destinationText={destinationText}
+            setOriginText={setOriginText}
+            setDestinationText={setDestinationText}
+            originCoords={originCoords}
+            destinationCoords={destinationCoords}
+            setOriginCoords={setOriginCoords}
+            setDestinationCoords={setDestinationCoords}
+            setShowGallery={setShowGallery}
+            handleSearchSelection={handleSearchSelection}
+            onCalculateRoute={handleRouteCalculation}
+            onFileUpload={(e) => {
+              const file = e.target.files?.[0];
+              if (file && mapRef.current) {
+                importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
+                  agentsRef.current = cars;
+                  setTrafficRules(rules);
+
+                  const mainCar = cars.find((c) => c.id === "main-car");
+                  if (mainCar && mainCar.route.length > 1) {
+                    drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
+                  }
+
+                  setShowSimulationControls(true);
+                  setShowCarSelector(true);
+                  setSelectionSent(true);
+                });
+              }
+            }}
+            inputMode={inputMode}
+            setInputMode={setInputMode}
+          />
+        )}
+
+        {showPostRouteView && !selectionSent && (
+          <RouteActionsPanel
+            mapRef={mapRef}
+            drawRef={drawRef}
+            mode={mode}
+            setMode={setMode}
+            onSendSelection={() => { void spawnMainCar(); }}
+          />
+        )}
+
+        {routeStatus && (
+          <div
+            className={`alert alert-${routeStatus === "success" ? "success" : "danger"
+              } alert-dismissible fade show`}
+            role="alert"
+          >
+            {routeStatus === "success"
+              ? "Ruta calculada con éxito"
+              : "Error al calcular la ruta"}
+            <button
+              type="button"
+              className="custom-close-button"
+              aria-label="Cerrar"
+              onClick={() => setRouteStatus(null)}
+            >
+              x
+            </button>
+            <div className="progress-bar-timer" />
+          </div>
+        )}
+
+        {showSimulationControls && (
+          <>
+            <SimulationControls
+              isPlaying={isPlaying}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              speed={simulationSpeed}
+              onSpeedChange={() =>
+                setSimulationSpeed((prev) => (prev === 4 ? 1 : prev * 2))
+              }
             />
 
-            <button
-              className="export-btn"
-              onClick={() => exportScenarioToCsv(agentsRef.current, trafficRules)}
-              title="Exportar a CSV"
+            <div
+              style={{
+                position: "absolute",
+                top: 100,
+                right: 20,
+                display: "flex",
+                flexDirection: "row",
+                gap: "16px",
+                zIndex: 1001,
+              }}
             >
-              <FaFileCsv className="export-icon" />
-            </button>
-            <button
-              className="export-btn"
-              onClick={() => { setShowModal(true) }}
-              title="Descargar telemetría CSV"
-            >
-              <FaChartLine className="export-icon" />
-            </button>
+              {selectedCar && (
+                <CarStatsPanel
+                  car={selectedCar}
+                  simulationSpeed={simulationSpeed}
+                  isPlaying={isPlaying}
+                  onClose={() => setSelectedCarId(null)}
+                  onRequestRouteChange={(carId) => {
+                    setCarPendingRouteChange(carId);
+                    alert(
+                      "Haz clic en el mapa para elegir un nuevo destino para el coche."
+                    );
+                  }}
+                  onDelete={deleteCar}
+                  mapRef={mapRef}
+                />
+              )}
 
-            <ExportModal
-              isOpen={showModal}
-              onClose={() => setShowModal(false)}
-              onConfirm={(criterion, interval) => {
-                setExportConfig({criterion, interval});
-                exportTelemetryToCsv();
-                setShowModal(false);
-              }}/>
-          </div>
-        </>
-      )}
+              <CarListPanel
+                cars={agentsRef.current}
+                selectedCarId={selectedCarId}
+                onSelect={setSelectedCarId}
+              />
+
+              <button
+                className="export-btn"
+                onClick={() => exportScenarioToCsv(agentsRef.current, trafficRules)}
+                title="Exportar a CSV"
+              >
+                <FaFileCsv className="export-icon" />
+              </button>
+              <button
+                className="export-btn"
+                onClick={() => { setShowModal(true) }}
+                title="Descargar telemetría CSV"
+              >
+                <FaChartLine className="export-icon" />
+              </button>
+
+              <ExportModal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                onConfirm={(criterion, interval) => {
+                  setExportConfig({ criterion, interval });
+                  exportTelemetryToCsv();
+                  setShowModal(false);
+                }} />
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 40%: dashboard de estadísticas */}
+      <div className="stats-pane">
+         <StatsDashboard
+          carAgents={agentsRef.current}
+          simulationSpeed={simulationSpeed}
+          isPlaying={isPlaying}
+        />
+      </div>
     </div>
   );
 };

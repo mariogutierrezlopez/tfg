@@ -1,41 +1,35 @@
-/* ===== Botón exportar ===== */
-.list-footer {
-    display: flex;
-    justify-content: center;
-    margin-top: 0.75rem;
-  }
-  
-  .export-btn {
-    --btn-size: 56px;
-  
-    width: var(--btn-size);
-    height: var(--btn-size);
-    background: #ffffff;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-  
-    box-shadow:
-      0 4px 6px  rgba(0, 0, 0, 0.10),
-      0 8px 20px rgba(0, 0, 0, 0.15);
-  
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  
-    transition: transform 120ms ease;
-  }
-  
-  .export-btn:hover {
-    transform: translateY(-2px);
-  }
-  
-  .export-btn:active {
-    transform: translateY(1px) scale(0.96);
-  }
-  
-  .export-icon {
-    font-size: 28px;
-    color: #000000;
-    pointer-events: none;
-  }
+/* SimulatorApp.css */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.simulator-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;   /* viewport height */
+  overflow: hidden;
+}
+
+.simulator-pane {
+  flex: 0 0 60%;
+  position: relative;
+}
+
+.stats-pane {
+  flex: 0 0 40%;
+  position: relative;       /* para poder elevarlo */
+  z-index: 10;              /* por encima del mapa */
+  background-color: #fff;   /* fondo sólido */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid #e0e0e0;
+}
+
+/* para que el mapa llene su contenedor */
+.map-container {
+  position: absolute;
+  top: 0; bottom: 0; left: 0; right: 0;
+}

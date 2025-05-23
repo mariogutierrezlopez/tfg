@@ -1,0 +1,153 @@
+/* ──────────── StatsDashboard.css ──────────── */
+
+/* Contenedor principal */
+.stats-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+  color: #374151; /* texto principal */
+}
+
+/* ───────── Selector de coches arriba ───────── */
+.car-selector-panel {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #f3f4f6; /* gris muy claro */
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.car-option {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.car-option:hover {
+  border-color: #1e90ff;
+  color: #1e90ff;
+}
+.car-option.selected {
+  background-color: #e6f7ff;
+  border-color: #1e90ff;
+  color: #1e90ff;
+}
+
+/* ───────── Grid 2×2 de tarjetas ───────── */
+.stats-cards {
+  flex: 3 1 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 12px;
+  padding: 8px;
+  overflow-y: auto;
+  min-height: 0;
+  background: #ffffff;
+  margin: 0;
+}
+
+.car-stats-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Encabezado de cada tarjeta */
+.car-stats-card h4 {
+  margin: 0 0 8px;
+  flex: 0 0 auto;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e90ff; /* color primario */
+}
+
+/* Lista dentro de la tarjeta */
+.car-stats-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.car-stats-card ul li {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: #4b5563; /* gris intermedio */
+}
+.car-stats-card ul li:last-child {
+  margin-bottom: 0;
+}
+
+/* ───────── Contenedor de la gráfica ───────── */
+.chart-container {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: #f9fafb; /* gris muy suave */
+  min-height: 0;
+}
+
+/* Que el SVG ocupe todo */
+.chart-container .recharts-wrapper {
+  flex: 1 1 0;
+}
+
+/* Leyenda fija abajo */
+.recharts-legend-wrapper {
+  background: #ffffff;
+  padding: 4px 8px;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+/* ────────── Placeholder sencillo y centrado ────────── */
+.stats-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;             /* ocupa todo el panel */
+  padding: 0 1rem;          /* un poco de margen lateral */
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.stats-placeholder h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #9ca3af;            /* gris suave */
+}
+
+.stats-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #9ca3af;            /* mismo gris suave */
+}
