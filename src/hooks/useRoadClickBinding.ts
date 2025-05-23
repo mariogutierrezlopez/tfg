@@ -10,7 +10,8 @@ const TARGET_LAYERS = ["roads-clickable-layer", "route-clickable-layer"];
 export function useRoadClickBinding(
   map: mapboxgl.Map | null,
   onClick: (e: MapEvt) => void,
-  deps: any[] = []
+  deps: any[] = [],
+  mode: "full" | "area" | null = null
 ) {
   /* ref estable para la callback */
   const cbRef = useRef<(e: MapEvt) => void>(() => {});
@@ -18,6 +19,8 @@ export function useRoadClickBinding(
 
   useEffect(() => {
     if (!map) return;
+    // Si estamos en modo área, no queremos capturar clicks en carreteras
+    if (mode === "area") return;
 
     /** único listener para todo el mapa */
     const listener = (e: MapEvt) => {
@@ -34,5 +37,5 @@ export function useRoadClickBinding(
     return () => {
       map.off("click", listener);
     };
-  }, [map, ...deps]);              // <- se re-crea si cambian deps
+  }, [map, mode, ...deps]); // re-crea el listener al cambiar `mode` o deps
 }

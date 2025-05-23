@@ -82,3 +82,39 @@
 
 /* —————————————————  NO-SCROLL EN MONTAJE  ————————————————— */
 body.noscroll { overflow: hidden; }
+
+/* Al final de Home.css */
+
+.github-section {
+  text-align: center;
+  margin: 2rem 0; /* espacio arriba y abajo */
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-github {
+  /* display: inline-block; */
+  font-size: 0.875rem;      /* un poco más pequeño */
+  padding: 0.4rem 0.8rem;    /* ajusta el acolchado */
+  background-color: #24292e; /* color GitHub oscuro */
+  color: #ffffff;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+    display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 200px;
+  margin: 0 auto;
+}
+
+.btn-github:hover {
+  background-color: #444d56;
+  text-decoration: none;
+  color: white;
+  transform: translateY(-1px);
+}
+

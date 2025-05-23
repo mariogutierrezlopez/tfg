@@ -5,25 +5,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 9999;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10000;
 }
 
 /* ────────────── Caja modal ────────────── */
 .modal-content {
-  width: 92%;
+  width: 90%;
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
 
   background: #ffffff;
-  border-radius: 20px;
-  padding: 2rem;
+  border-radius: 12px;
+  padding: 1.5rem;
   box-shadow:
-    0 6px 10px rgba(0, 0, 0, 0.10),
-    0 12px 30px rgba(0, 0, 0, 0.20);
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 8px 20px rgba(0, 0, 0, 0.15);
   position: relative;
+
   font-family: system-ui, sans-serif;
+  color: #374151;
+  box-sizing: border-box;
 }
 
 /* ─── Cabecera ─── */
@@ -36,31 +39,113 @@
 
 .modal-header h2 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 600;
+  color: #1e90ff;
 }
 
-/* Botón cerrar: círculo blanco con sombra */
+/* Botón cerrar */
 .close-btn {
-  --size: 36px;
-
-  width: var(--size);
-  height: var(--size);
+  width: 32px;
+  height: 32px;
   background: #ffffff;
-  border: none;
+  border: 1px solid #e5e7eb;
   border-radius: 50%;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
 
   box-shadow:
-    0 3px 5px rgba(0, 0, 0, 0.12),
-    0 6px 12px rgba(0, 0, 0, 0.16);
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.12);
 
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 120ms ease;
 }
-.close-btn:hover   { transform: translateY(-2px); }
-.close-btn:active  { transform: scale(0.9); }
+.close-btn:hover   { transform: translateY(-1px); }
+.close-btn:active  { transform: scale(0.95); }
+
+/* ───── Fieldset / Legend ───── */
+.modal-content fieldset {
+  border: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.modal-content legend {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+/* ───── Radio labels ───── */
+.modal-content label.inline-flex {
+  font-size: 0.9rem;
+  color: #374151;
+  margin-right: 1.5rem;
+  cursor: pointer;
+}
+.modal-content input[type="radio"] {
+  margin-right: 0.5rem;
+  accent-color: #1e90ff;
+}
+
+/* ───── Select styling ───── */
+.modal-content label.block {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+.modal-content select {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: #374151;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.modal-content select:focus {
+  border-color: #1e90ff;
+  box-shadow: 0 0 0 2px #1e90ff33;
+}
+
+/* ───── Footers / Buttons ───── */
+.modal-content .flex {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.modal-content .flex button {
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 120ms ease;
+  border: none;
+}
+
+.modal-content .flex .btn-cancel {
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.modal-content .flex .btn-cancel:hover {
+  background: #f3f4f6;
+}
+
+.modal-content .flex .btn-export {
+  background: #1e90ff;
+  color: #ffffff;
+}
+.modal-content .flex .btn-export:hover {
+  background: #1878d8;
+}

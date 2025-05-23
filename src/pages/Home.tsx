@@ -5,6 +5,8 @@ import funciones2 from "../assets/funciones2.png";
 import funciones3 from "../assets/funciones3.png";
 import funciones4 from "../assets/funciones4.png";
 
+import { FaGithub } from "react-icons/fa";
+
 import "./Home.css";
 import HowItWorksSlider from "../components/organisms/howitworksslider/HowItWorksSlider";
 import useFadeIn from "../hooks/useFadeIn";
@@ -113,6 +115,16 @@ const Home: React.FC = () => {
       >
         <HowItWorksSlider />
       </div>
+
+      <section className="github-section">
+        <a
+          href="https://github.com/mariogutierrezlopez"
+          className="btn-github"
+          target="_blank"
+          rel="noopener noreferrer"
+        ><FaGithub className="github-icon"/>Visita mi GitHub
+        </a>
+      </section>
     </div>
   );
   

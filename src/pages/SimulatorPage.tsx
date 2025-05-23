@@ -127,8 +127,8 @@ const SimulatorApp: React.FC = () => {
 
   useRoadClickBinding(mapInstance, handleRoadClick, [
     selectedCarType,
-    carPendingRouteChange,
-  ]);
+    carPendingRouteChange],
+    mode);
 
   useCleanOnUnmount(mapInstance);
   useManualPointSelection(
@@ -285,8 +285,7 @@ const SimulatorApp: React.FC = () => {
               onSpeedChange={() =>
                 setSimulationSpeed((prev) => (prev === 4 ? 1 : prev * 2))
               }
-            />
-
+            />  
             <div
               style={{
                 position: "absolute",
@@ -351,7 +350,7 @@ const SimulatorApp: React.FC = () => {
 
       {/* 40%: dashboard de estadísticas */}
       <div className="stats-pane">
-         <StatsDashboard
+        <StatsDashboard
           carAgents={agentsRef.current}
           simulationSpeed={simulationSpeed}
           isPlaying={isPlaying}

@@ -1,7 +1,7 @@
 // src/components/ExportModal.tsx
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
-import './ExportModal.css'; // importa ahí el CSS de arriba
+import './ExportModal.css';
 
 type Criterion = 'meters' | 'seconds';
 
@@ -30,27 +30,25 @@ export function ExportModal({ isOpen, onClose, onConfirm }: Props) {
           </button>
         </div>
 
-        <fieldset className="mb-4">
-          <legend className="font-medium mb-2">Criterio</legend>
-          <label className="inline-flex items-center mr-4">
+        <fieldset>
+          <legend>Criterio</legend>
+          <label className="inline-flex">
             <input
               type="radio"
               name="criterion"
               value="meters"
               checked={criterion === 'meters'}
               onChange={() => setCriterion('meters')}
-              className="mr-1"
             />
             Metros
           </label>
-          <label className="inline-flex items-center">
+          <label className="inline-flex">
             <input
               type="radio"
               name="criterion"
               value="seconds"
               checked={criterion === 'seconds'}
               onChange={() => setCriterion('seconds')}
-              className="mr-1"
             />
             Segundos
           </label>
@@ -63,7 +61,6 @@ export function ExportModal({ isOpen, onClose, onConfirm }: Props) {
           <select
             value={interval}
             onChange={e => setInterval(Number(e.target.value))}
-            className="w-full border rounded px-2 py-1"
           >
             {intervals.map(i => (
               <option key={i} value={i}>
@@ -73,16 +70,13 @@ export function ExportModal({ isOpen, onClose, onConfirm }: Props) {
           </select>
         </div>
 
-        <div className="flex justify-end space-x-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded border hover:bg-gray-100"
-          >
+        <div className="flex">
+          <button onClick={onClose} className="btn-cancel">
             Cancelar
           </button>
           <button
             onClick={() => onConfirm(criterion, interval)}
-            className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 primary-button"
+            className="btn-export"
           >
             Exportar
           </button>
