@@ -7,8 +7,6 @@ import useMapDraw from "../hooks/useMapDraw";
 import "mapbox-gl/dist/mapbox-gl.css";
 import CarSelectorPanel from "../components/organisms/carselectionpanel/CarSelectorPanel";
 import SimulationControls from "../components/organisms/simulationcontrols/SimulationControls";
-import CarListPanel from "../components/organisms/carlistpanel/CarListPanel";
-import CarStatsPanel from "../components/organisms/carstatspanel/CarStatsPanel";
 import { useCleanOnUnmount } from "../hooks/useCleanOnUnmount";
 import { useManualPointSelection } from "../hooks/useManualPointSelection";
 import { useDrawModeHandler } from "../hooks/useDrawModeHandler";
@@ -31,6 +29,8 @@ import { exportTelemetryToCsv, setExportConfig } from "../utils/csvUtils";
 import { ExportModal } from "../components/organisms/exportmodal/ExportModal";
 import StatsDashboard from "../components/organisms/statsdashboard/StatsDashboard";
 import "./SimulationPage.css";
+import { spawnSecondaryCar } from "../utils/carUtils"; // o la función que uses para spawnear
+import SecondaryCarPanel, { Profile } from "../components/organisms/secondarycarpanel/SecondaryCarPanel";
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
@@ -65,12 +65,16 @@ const SimulatorApp: React.FC = () => {
   const destinationPinRef = useRef<mapboxgl.Marker | null>(null);
   const [showGallery, setShowGallery] = useState(false);
 
-  //Estados para los coches
+  //Modal para exportar telemetría
+  const [showModal, setShowModal] = useState(false);
+
+  // Nuevo estado para el panel de secundarios
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const selectedCar = agentsRef.current.find((car) => car.id === selectedCarId);
 
-  //Modal para exportar telemetría
-  const [showModal, setShowModal] = useState(false);
 
   useSimulationLoop({
     agentsRef,
@@ -95,7 +99,7 @@ const SimulatorApp: React.FC = () => {
     token: mapboxToken,
   });
 
-  const { spawnMainCar, handleRoadClick } = useCarManager(
+  const { spawnMainCar, handleRoadClick: baseHandleRoadClick } = useCarManager(
     mapInstance,
     mapRef,
     agentsRef,
@@ -114,6 +118,86 @@ const SimulatorApp: React.FC = () => {
     setTrafficRules
   );
 
+  // estados para creación de coche secundario
+  const [secondaryOrigin, setSecondaryOrigin] = useState<[number, number] | null>(null);
+  const [secondaryDestination, setSecondaryDestination] = useState<[number, number] | null>(null);
+  const secondaryOriginMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const secondaryDestinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+
+  // En tu SimulationPage.tsx
+
+  const handleRoadClick = async (
+    e: mapboxgl.MapMouseEvent & mapboxgl.EventData
+  ) => {
+    const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+
+    if (selectedProfileId) {
+      // 1) primer clic: origen
+      if (!secondaryOrigin) {
+        setSecondaryOrigin(coord);
+        if (mapInstance) {
+          // crear marcador de origen
+          secondaryOriginMarkerRef.current = new mapboxgl.Marker({ color: 'green' })
+            .setLngLat(coord)
+            .addTo(mapInstance);
+
+          // auto-eliminar en 5s
+          setTimeout(() => {
+            secondaryOriginMarkerRef.current?.remove();
+            secondaryOriginMarkerRef.current = null;
+          }, 5000);
+        }
+        return;
+      }
+
+      // 2) segundo clic: destino + spawn secundario
+      if (!secondaryDestination) {
+        setSecondaryDestination(coord);
+        if (mapInstance) {
+          // crear marcador de destino
+          secondaryDestinationMarkerRef.current = new mapboxgl.Marker({ color: 'red' })
+            .setLngLat(coord)
+            .addTo(mapInstance);
+
+          // auto-eliminar en 5s
+          setTimeout(() => {
+            secondaryDestinationMarkerRef.current?.remove();
+            secondaryDestinationMarkerRef.current = null;
+          }, 5000);
+        }
+
+        const profile = profiles.find(p => p.id === selectedProfileId)!;
+        await spawnSecondaryCar(
+          mapInstance!,
+          agentsRef,
+          secondaryOrigin,
+          coord,
+          profile.speed,
+          `sec-${selectedProfileId}-${Date.now()}`
+        );
+
+        // limpiamos estado de selección (los refs ya se limpiarán tras 5 s)
+        setSecondaryOrigin(null);
+        setSecondaryDestination(null);
+        setSelectedProfileId(null);
+        return;
+      }
+    }
+
+    // en modo normal delegamos a coche principal si procede
+    await baseHandleRoadClick(e);
+  };
+
+
+
+  // atar listener para creación de coches secundarios
+  useRoadClickBinding(
+    mapInstance,
+    handleRoadClick,
+    [selectedProfileId, secondaryOrigin, secondaryDestination],
+    mode
+  );
+
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
@@ -125,10 +209,13 @@ const SimulatorApp: React.FC = () => {
     "search"
   );
 
-  useRoadClickBinding(mapInstance, handleRoadClick, [
-    selectedCarType,
-    carPendingRouteChange],
-    mode);
+  // binding para el coche principal: usa baseHandleRoadClick en lugar de handleRoadClick
+  useRoadClickBinding(
+    mapInstance,
+    baseHandleRoadClick,
+    [selectedCarType, carPendingRouteChange],
+    mode
+  );
 
   useCleanOnUnmount(mapInstance);
   useManualPointSelection(
@@ -147,27 +234,27 @@ const SimulatorApp: React.FC = () => {
   const { onMapReady } = useMapInitialization(setMapInstance, mapRef);
 
 
-  const deleteCar = (carId: string) => {
-    const car = agentsRef.current.find(c => c.id === carId);
-    if (!car) return;
+  // const deleteCar = (carId: string) => {
+  //   const car = agentsRef.current.find(c => c.id === carId);
+  //   if (!car) return;
 
-    /* 1 — Quitar marcador */
-    car.marker.remove();
-    agentsRef.current = agentsRef.current.filter(c => c.id !== carId);
+  //   /* 1 — Quitar marcador */
+  //   car.marker.remove();
+  //   agentsRef.current = agentsRef.current.filter(c => c.id !== carId);
 
-    /* 2 — Eliminar capa y fuente de la ruta, si existen */
-    const map = mapRef.current;
-    if (map) {
-      const layerId = `${carId}-route`;
-      const sourceId = `${carId}-route`;
+  //   /* 2 — Eliminar capa y fuente de la ruta, si existen */
+  //   const map = mapRef.current;
+  //   if (map) {
+  //     const layerId = `${carId}-route`;
+  //     const sourceId = `${carId}-route`;
 
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    }
+  //     if (map.getLayer(layerId)) map.removeLayer(layerId);
+  //     if (map.getSource(sourceId)) map.removeSource(sourceId);
+  //   }
 
-    /* 3 — Cerrar panel si era el seleccionado */
-    if (selectedCarId === carId) setSelectedCarId(null);
-  };
+  //   /* 3 — Cerrar panel si era el seleccionado */
+  //   if (selectedCarId === carId) setSelectedCarId(null);
+  // };
 
 
   return (
@@ -286,7 +373,21 @@ const SimulatorApp: React.FC = () => {
               onSpeedChange={() =>
                 setSimulationSpeed((prev) => (prev === 4 ? 1 : prev * 2))
               }
-            />  
+            />
+
+            <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 1001 }}>
+              <SecondaryCarPanel
+                selectedProfileId={selectedProfileId}
+                onEnterMode={pid => {
+                  setSelectedProfileId(pid);
+                  setSecondaryOrigin(null);
+                  setSecondaryDestination(null);
+                }}
+                profiles={profiles}
+                setProfiles={setProfiles}
+              />
+            </div>
+
             <div
               style={{
                 position: "absolute",
@@ -298,29 +399,7 @@ const SimulatorApp: React.FC = () => {
                 zIndex: 1001,
               }}
             >
-              {selectedCar && (
-                <CarStatsPanel
-                  car={selectedCar}
-                  simulationSpeed={simulationSpeed}
-                  isPlaying={isPlaying}
-                  onClose={() => setSelectedCarId(null)}
-                  onRequestRouteChange={(carId) => {
-                    setCarPendingRouteChange(carId);
-                    alert(
-                      "Haz clic en el mapa para elegir un nuevo destino para el coche."
-                    );
-                  }}
-                  onDelete={deleteCar}
-                  mapRef={mapRef}
-                />
-              )}
-
-              <CarListPanel
-                cars={agentsRef.current}
-                selectedCarId={selectedCarId}
-                onSelect={setSelectedCarId}
-              />
-
+              
               <button
                 className="export-btn"
                 onClick={() => exportScenarioToCsv(agentsRef.current, trafficRules)}
@@ -348,6 +427,8 @@ const SimulatorApp: React.FC = () => {
           </>
         )}
       </div>
+
+
 
       {/* 40%: dashboard de estadísticas */}
       <div className="stats-pane">

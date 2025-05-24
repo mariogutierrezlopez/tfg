@@ -1,0 +1,157 @@
+/* src/components/organisms/SecondaryCarPanel.css */
+
+.secondary-panel {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.10),
+    0 8px 20px rgba(0, 0, 0, 0.15);
+  font-family: system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  max-height: 340px;
+  z-index: 997;
+}
+
+.secondary-panel h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333333;
+}
+
+.secondary-panel ul {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.secondary-panel li {
+  padding: 0.45rem 0.65rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #333333;
+}
+
+.secondary-panel li:hover {
+  background: #f3f4f6;
+}
+
+.secondary-panel li.selected {
+  background: #1e90ff;
+  color: #ffffff;
+}
+
+.secondary-panel li.selected:hover {
+  background: #1e90ff;
+}
+
+/* texto del ítem */
+.secondary-panel .secondary-panel__item-text {
+  flex: 1;
+}
+
+/* botón editar (lápiz) */
+.secondary-panel .secondary-panel__edit-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: #ffffff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10);
+  transition: background-color 120ms ease, transform 120ms ease, color 120ms ease;
+  color: #666666;
+  cursor: pointer;
+}
+
+.secondary-panel .secondary-panel__edit-btn:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+  color: #1e90ff;
+}
+
+.secondary-panel .secondary-panel__edit-btn:active {
+  transform: translateY(1px) scale(0.95);
+}
+
+/* contenedor de botones inferior */
+.secondary-panel .secondary-panel__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 0.75rem;
+}
+
+/* base para ambos tipos de botón */
+.secondary-panel .secondary-panel__btn {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.10),
+    0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* botón principal */
+.secondary-panel .secondary-panel__btn-primary {
+  background: #1e90ff;
+  color: #ffffff;
+}
+
+.secondary-panel .secondary-panel__btn-primary:hover:enabled {
+  background: #1c86ee;
+  transform: translateY(-2px);
+}
+
+.secondary-panel .secondary-panel__btn-primary:active:enabled {
+  transform: translateY(1px) scale(0.96);
+}
+
+/* botón outline */
+.secondary-panel .secondary-panel__btn-outline {
+  background: #ffffff;
+  border: 1px solid #1e90ff;
+  color: #1e90ff;
+}
+
+.secondary-panel .secondary-panel__btn-outline:hover {
+  background: #f3f4f6;
+  transform: translateY(-2px);
+}
+
+.secondary-panel .secondary-panel__btn-outline:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+/* estado disabled */
+.secondary-panel .secondary-panel__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .secondary-panel {
+    width: 100%;
+    max-height: none;
+    padding: 0.75rem 1rem;
+  }
+  .secondary-panel .secondary-panel__actions {
+    flex-direction: column;
+  }
+}

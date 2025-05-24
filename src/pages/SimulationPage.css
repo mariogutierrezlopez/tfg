@@ -33,3 +33,49 @@ html, body, #root {
   position: absolute;
   top: 0; bottom: 0; left: 0; right: 0;
 }
+
+/* ===============================
+   EXPORT & TELEMETRÍA BUTTONS
+   (igual que .control-button/.control-icon)
+   =============================== */
+
+.export-btn {
+  width: 56px;
+  height: 56px;
+  background: #ffffff;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.10),
+    0 8px 18px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.export-btn:hover {
+  transform: translateY(-2px);
+}
+
+.export-btn:active {
+  transform: translateY(1px) scale(0.96);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.export-btn:focus-visible {
+  box-shadow:
+    0 0 0 3px #1e90ff,
+    0 4px 6px rgba(0, 0, 0, 0.10),
+    0 8px 18px rgba(0, 0, 0, 0.15);
+}
+
+.export-icon {
+  font-size: 28px;
+  color: #000000;
+  pointer-events: none;
+}

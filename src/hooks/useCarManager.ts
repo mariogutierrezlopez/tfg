@@ -1,10 +1,11 @@
-/* src/hooks/useCarManager.tsx ----------------------------------------- */
+/* src/hooks/useCarManager.tsx */
+
 import { useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import { CarAgent } from "../logic/agents/CarAgents";
 import {
-  spawnCar,          // ← genérico
-  spawnMainCar,      // ← alias que creaste en carUtils
+  spawnCar,
+  spawnMainCar,
 } from "../utils/carUtils";
 import { fetchRouteFrom } from "../utils/routeUtils";
 import { TrafficElement } from "../utils/types";
@@ -33,92 +34,52 @@ export const useCarManager = (
   ) => Promise<{ routeData: any; trafficRules: TrafficElement[] } | null>,
   setTrafficRules: React.Dispatch<React.SetStateAction<TrafficElement[]>>
 ) => {
+  const { tree } = useRules();
 
-  const {tree} = useRules();
-  /* ───────────────────────────────────────────── */
-  /* Handler de clic en el mapa                   */
-  /* ───────────────────────────────────────────── */
   const handleRoadClick = useCallback(
     async (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
-
-      /* ① ¿un coche en modo “cambiar destino”? */
+      // ① Cambio de ruta pendiente
       if (carPendingRouteChange) {
         const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-
         const car = agentsRef.current.find(a => a.id === carPendingRouteChange);
         if (!car) return;
 
         const res = await fetchRouteFrom(car.position, coord, token);
-        if (!res) return;                                  //  ↩️  si falla no añadimos coche
-
+        if (!res) return;
         const { routeData, trafficRules } = res;
 
-        /* — sustituir ruta y velocidades — */
-        car.route = routeData.coordinates.slice(1);   // 👈  sin el primer punto
+        // Actualizar agente
+        car.route = routeData.coordinates.slice(1);
         car.position = routeData.coordinates[0];
         car.marker.setLngLat(car.position);
         car.prevPosition = [...car.position];
         car.stepSpeeds = routeData.stepSpeeds;
         car.currentStepSpeed = car.stepSpeeds[0] ?? car.maxSpeed;
-        // … después de actualizar car.route, car.position, etc.
         drawCarRoute(mapRef.current!, car.id, routeData.coordinates);
 
-
         setTrafficRules(prev => mergeTrafficRules(prev, trafficRules));
-        setCarPendingRouteChange(null);                   // ✅  ya no está pendiente
-
-        /* elimina pin rojo (si lo tenías) */
+        setCarPendingRouteChange(null);
         destinationPinRef.current?.remove();
-
-        return;                                           // ⛔  ¡IMPORTANTE!
+        return;
       }
 
-      /* ② clic sobre un coche existente */
-      const tgt = agentsRef.current.find(a => {
+      // ② Clic sobre un coche existente: seleccionarlo
+      const clicked = agentsRef.current.find(a => {
         const r = a.marker.getElement().getBoundingClientRect();
-        return e.originalEvent.clientX >= r.left && e.originalEvent.clientX <= r.right &&
-          e.originalEvent.clientY >= r.top && e.originalEvent.clientY <= r.bottom;
+        return e.originalEvent.clientX >= r.left &&
+               e.originalEvent.clientX <= r.right &&
+               e.originalEvent.clientY >= r.top &&
+               e.originalEvent.clientY <= r.bottom;
       });
-      if (tgt) { setSelectedCarId(tgt.id); return; }
+      if (clicked) {
+        setSelectedCarId(clicked.id);
+      }
 
-      /* ③ crear un coche nuevo -------------------------------- */
-      if (!mapInstance) return;
-
-      /* ① calculamos ruta + reglas exactamente igual que con main-car */
-      // ③ crear un coche nuevo
-      const origin: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-      const destination: [number, number] =
-        destinationCoords ?? [origin[0] + 0.01, origin[1] + 0.01];
-
-      const out = await handleRouteCalculation(origin, destination);
-      if (!out) return;
-
-      const { routeData, trafficRules } = out;
-      setTrafficRules(prev => mergeTrafficRules(prev, trafficRules));
-
-      const newId = crypto.randomUUID();
-
-      await spawnCar(
-        mapInstance,        // map
-        agentsRef,          // lista mutable
-        origin,
-        destination,
-        selectedCarType,
-        newId,
-        () => setSelectedCarId(newId),
-        tree
-      );
-
-      /* pinta su línea + pin destino */
-      drawCarRoute(mapInstance, newId, routeData.drawCoords);
+      // ⚠️ No hay creación automática de coches aquí
     },
     [
-      mapInstance,
-      agentsRef,
       carPendingRouteChange,
-      destinationCoords,
-      selectedCarType,
-      token,                     // sólo lo usa tu “cambiar ruta”
+      token,
       setSelectedCarId,
       setCarPendingRouteChange,
       setTrafficRules,
@@ -126,18 +87,13 @@ export const useCarManager = (
     ]
   );
 
-  /* ───────────────────────────────────────────── */
-  /* Exponemos API del hook                       */
-  /* ───────────────────────────────────────────── */
   return {
     handleRoadClick,
 
     spawnMainCar: async () => {
       if (!routeData || !mapInstance) return;
-
       const origin = routeData.coordinates[0];
       const destination = routeData.coordinates.at(-1)!;
-
       await spawnMainCar(
         mapInstance,
         agentsRef,

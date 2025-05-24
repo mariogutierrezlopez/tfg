@@ -11,16 +11,19 @@ export function useRoadClickBinding(
   map: mapboxgl.Map | null,
   onClick: (e: MapEvt) => void,
   deps: any[] = [],
-  mode: "full" | "area" | null = null
+  mode: "full" | "area" | "manual-secondary" | null = null
 ) {
   /* ref estable para la callback */
-  const cbRef = useRef<(e: MapEvt) => void>(() => {});
-  cbRef.current = onClick ?? (() => {});
+  const cbRef = useRef<(e: MapEvt) => void>(() => { });
+  cbRef.current = onClick ?? (() => { });
 
   useEffect(() => {
     if (!map) return;
     // Si estamos en modo área, no queremos capturar clicks en carreteras
     if (mode === "area") return;
+
+    // Pero si modo_manual_secondary, dejamos que React capture el click
+    if (mode === "manual-secondary") return;
 
     /** único listener para todo el mapa */
     const listener = (e: MapEvt) => {
@@ -28,7 +31,7 @@ export function useRoadClickBinding(
         layers: TARGET_LAYERS,
       });
       if (feats.length && typeof cbRef.current === "function") {
-        cbRef.current(e);          // clic sobre una de las capas
+        cbRef.current(e);
       }
     };
 
@@ -37,5 +40,5 @@ export function useRoadClickBinding(
     return () => {
       map.off("click", listener);
     };
-  }, [map, mode, ...deps]); // re-crea el listener al cambiar `mode` o deps
+  }, [map, mode, ...deps]);
 }

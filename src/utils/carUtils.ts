@@ -138,6 +138,79 @@ export async function spawnMainCar(
   setSelectionSent(true);     // oculta el SearchForm & RouteActionsPanel
 }
 
+export async function spawnSecondaryCar(
+  map: mapboxgl.Map,
+  agentsRef: React.MutableRefObject<CarAgent[]>,
+  origin: [number, number],
+  destination: [number, number],
+  speedKmh: number,
+  carId: string
+) {
+  // 1) obtenemos la geometría
+  const { geometry } = await fetchRouteWithSpeeds([origin, destination]);
+  const drawCoords = resampleRoute(geometry, 3);
+
+  // 2) pintamos la ruta (línea discontinua gris)
+  const srcId = `${carId}-route`;
+  if (map.getLayer(srcId)) map.removeLayer(srcId);
+  if (map.getSource(srcId)) map.removeSource(srcId);
+  map.addSource(srcId, {
+    type: "geojson",
+    data: { type: "Feature", geometry: { type: "LineString", coordinates: drawCoords } }
+  });
+  map.addLayer({
+    id: srcId,
+    type: "line",
+    source: srcId,
+    paint: {
+      "line-color": "#666",
+      "line-width": 3,
+      "line-dasharray": [2, 2],
+      "line-opacity": 0.7
+    }
+  });
+
+  // 3) creamos un marcador con tu icono escalable
+  //    extraemos del vehicleSizes el tamaño en metros
+  const cfg = vehicleSizes["secondary"] ?? { w: 36, h: 60 };
+  const wM = (cfg as any).wM ?? cfg.w / 20;
+  const lM = (cfg as any).lM ?? cfg.h / 20;
+
+  // creamos el elemento HTML con tu icono top-view
+  const el = createCarIcon(carIcon, "secondary", carId);
+
+  const marker = new mapboxgl.Marker({
+    element: el,
+    rotationAlignment: "map",
+    pitchAlignment: "map",
+    anchor: "center"
+  })
+    .setLngLat(origin)
+    .addTo(map);
+
+  // atamos el escalado en función del zoom/latitud
+  const detach = attachMeterScaling(map, marker, wM, lM);
+
+  // 4) agente que se moverá con velocidad constante
+  const mps = speedKmh / 3.6;
+  const stepSpeeds = drawCoords.slice(1).map(() => mps);
+
+  const agent = new CarAgent(
+    carId,
+    geometry[0],
+    geometry.slice(1),
+    marker,
+    { id: "secondary", name: "sec", image: carIcon },
+    stepSpeeds,
+    null
+  );
+  // guardamos la función para desconectar el listener si removemos el agente
+  (agent as any).detachZoom = detach;
+
+  // 5) añadimos o reemplazamos el agente en la lista
+  agentsRef.current = agentsRef.current.filter(a => a.id !== carId);
+  agentsRef.current.push(agent);
+}
 
 
 
