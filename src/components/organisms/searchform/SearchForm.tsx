@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 import { SearchBox } from "@mapbox/search-js-react";
 import { useRules } from "../../../context/rulesContext";  // ← tu contexto
 import "./SearchForm.css";
+import InputField from "../../atoms/inputfield/InputField";
 
 interface Props {
   originText: string;
@@ -19,6 +20,7 @@ interface Props {
   onFileUpload: (e: ChangeEvent<HTMLInputElement>) => void;
   inputMode: "search" | "manual" | "csv";
   setInputMode: (mode: "search" | "manual" | "csv") => void;
+  mapRef: React.RefObject<mapboxgl.Map>;
 }
 
 const SearchForm: React.FC<Props> = ({
@@ -36,6 +38,7 @@ const SearchForm: React.FC<Props> = ({
   onFileUpload,
   inputMode,
   setInputMode,
+  mapRef,
 }) => {
   const { setTree } = useRules();              // ← sacamos setTree del contexto
   const [rulesLoaded, setRulesLoaded] = useState(false);
@@ -61,37 +64,49 @@ const SearchForm: React.FC<Props> = ({
 
   /** ------- Funciones para poder arrastrar un archivo al input y reconocer las reglas -------- */
   const parseRulesFile = async (file: File) => {
-  try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    setTree(parsed);
-    setRulesLoaded(true);
-  } catch (err) {
-    console.error("Error al parsear JSON de reglas:", err);
-    alert("El JSON de reglas no es válido.");
-  }
-};
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      setTree(parsed);
+      setRulesLoaded(true);
+    } catch (err) {
+      console.error("Error al parsear JSON de reglas:", err);
+      alert("El JSON de reglas no es válido.");
+    }
+  };
 
-const handleRulesFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (file) parseRulesFile(file);
-};
+  const handleRulesFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) parseRulesFile(file);
+  };
 
-const handleRulesDrop = (e: React.DragEvent<HTMLDivElement>) => {
-  e.preventDefault();
-  const file = e.dataTransfer.files?.[0];
-  if (file) parseRulesFile(file);
-};
+  const handleRulesDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) parseRulesFile(file);
+  };
+
+  /** ------- FUnciones buscador en modo manual -------- */
+
+  const [manualQuery, setManualQuery] = useState("");
+  const [manualFeature, setManualFeature] = useState<GeoJSON.Feature | null>(null);
+
+  // al pulsar buscar, centramos
+  const handleManualSearch = () => {
+    if (!manualFeature || !mapRef.current) return;
+    const [lng, lat] = manualFeature.geometry.coordinates as [number, number];
+    mapRef.current.flyTo({ center: [lng, lat], zoom: 15 });
+  };
 
 
-/** ----------- Return ------------ */
+  /** ----------- Return ------------ */
 
   return (
     <div className="search-form-container">
       {!rulesLoaded ? (
         <div className="rules-upload-container"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleRulesDrop}>
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleRulesDrop}>
           <h2>Carga tus reglas de decisión</h2>
           <p>Antes de poder elegir origen/destino o modo CSV, sube tu JSON de reglas.</p>
 
@@ -158,33 +173,34 @@ const handleRulesDrop = (e: React.DragEvent<HTMLDivElement>) => {
                   if (f) handleSearchSelection(f, false);
                 }}
               />
-
-              <div className="search-form-buttons">
-                <button
-                  className="btn btn-outline-secondary"
-                  onClick={() => {
-                    setOriginText(destinationText);
-                    setDestinationText(originText);
-                    if (originCoords && destinationCoords) {
-                      setOriginCoords(destinationCoords);
-                      setDestinationCoords(originCoords);
-                    }
-                  }}
-                >
-                  Intercambiar
-                </button>
-              </div>
             </div>
           )}
 
-          {/* ─── MODO MANUAL ─── */}
           {inputMode === "manual" && (
-            <div className="search-form-inner text-muted">
-              <p className="mb-2">
-                Selecciona punto A y B en el mapa (Shift + clic).
+            <div className="search-form-inner">
+              <div className="manual-search-row">
+                <InputField
+                  value={manualQuery}
+                  onChange={setManualQuery}
+                  onRetrieve={(feat) => {
+                    setManualFeature(feat);
+                  }}
+                  placeholder="Busca una zona..."
+                />
+                <button
+                  className="btn btn-outline-secondary manual-search-btn"
+                  onClick={handleManualSearch}
+                  disabled={!manualFeature}
+                >
+                  Buscar zona
+                </button>
+              </div>
+              <p className="manual-instruction">
+                Ahora clic en el mapa para elegir origen y destino.
               </p>
             </div>
           )}
+
 
           {/* ─── MODO CSV ─── */}
           {inputMode === "csv" && (

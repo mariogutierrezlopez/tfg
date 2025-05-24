@@ -253,6 +253,25 @@ mapbox-search-box [class*="--Input"]:focus {
   line-height: 1.4;
 }
 
+.manual-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.manual-search-btn {
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.manual-instruction {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+
 /* ──────────────────────────────────────────
      RESPONSIVE
      ────────────────────────────────────────── */

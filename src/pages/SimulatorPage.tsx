@@ -241,6 +241,7 @@ const SimulatorApp: React.FC = () => {
             }}
             inputMode={inputMode}
             setInputMode={setInputMode}
+            mapRef={mapRef}
           />
         )}
 
