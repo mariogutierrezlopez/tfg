@@ -35,6 +35,15 @@ export class CarAgent extends TrafficAgent {
   private decisionTree: TreeNode | null;
   public usingDecisionTree = false; //Flag para saber si se está usando el árbol de decisiones
 
+  public features: {
+    Lz: number;
+    Cz: number;
+    Rz: number;
+    LL: number;
+    RL: number;
+    [key: string]: number;
+  };
+
   constructor(
     id: string,
     position: [number, number],
@@ -52,6 +61,7 @@ export class CarAgent extends TrafficAgent {
     this.prevPosition = [...position]; // ⬅️ Añade esta línea
     //console.log(`[${id}] CarAgent creado con stepSpeeds:`, stepSpeeds);
     this.decisionTree = decisionTree;
+    this.features = { Lz: 0, Cz: 0, Rz: 0, LL: 0, RL: 0 };
   }
 
   private getCurrentStepSpeed(): number {
@@ -92,6 +102,8 @@ export class CarAgent extends TrafficAgent {
     // buscamo rotonda
     const round = rules.find(r => r.type === "roundabout");
 
+    if(this.decisionTree == null) console.warn("⚠️ Decision tree is null, using legacy logic only.");
+
     // ─── 1) LÓGICA DINÁMICA ─────────────────────────────
     if (this.decisionTree && round) {
       //console.log("🔧 Usando decisionTree (solo dentro de rotonda)");
@@ -107,7 +119,7 @@ export class CarAgent extends TrafficAgent {
       if (distY <= 100) {
         this.usingDecisionTree = true; //Se activa el flag si se está usando el árbol de decisiones
 
-
+        console.log("Se está usando el árbol de decisiones para la rotonda:", round.id);
         // armamos inputs
         const inputs: Record<string, number> = {
           speedVRnd: this.speed,

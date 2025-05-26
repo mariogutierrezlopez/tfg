@@ -1,0 +1,111 @@
+{
+  "condition": { "feature": "Speed-V RND", "operator": ">", "value": 7.5 },
+  "true": {
+    "condition": { "feature": "Dist-Y", "operator": ">", "value": 0.5 },
+    "true": {
+      "condition": { "feature": "Speed-V RND", "operator": ">", "value": 33.5 },
+      "true": {
+        "condition": { "feature": "Speed-L", "operator": ">", "value": 35 },
+        "true": {
+          "condition": { "feature": "Speed-V RND", "operator": ">", "value": 72.5 },
+          "true":  { "action": "GD" },
+          "false": {
+            "condition": { "feature": "Speed-V RND", "operator": ">", "value": 58.5 },
+            "true":  { "action": "GD" },
+            "false": {
+              "condition": { "feature": "Dist_YL", "operator": "==", "value": 0 },
+              "true": {
+                "condition": { "feature": "Dist-Y", "operator": ">", "value": 165 },
+                "true": {
+                  "condition": { "feature": "Dist-Y", "operator": ">", "value": 255 },
+                  "true":  { "action": "T-HOLD" },
+                  "false": {
+                    "condition": { "feature": "Dist-Y", "operator": "<=", "value": 255 },
+                    "true":  { "action": "T-OFF" },
+                    "false": {
+                      "condition": { "feature": "Dist-Y", "operator": "<=", "value": 165 },
+                      "true":  { "action": "GD" },
+                      "false": { "action": "T-OFF" }
+                    }
+                  }
+                },
+                "false": {
+                  "condition": { "feature": "Dist-Y", "operator": "<=", "value": 165 },
+                  "true":  { "action": "GD" },
+                  "false": { "action": "T-OFF" }
+                }
+              },
+              "false": {
+                "condition": { "feature": "Dist_YL", "operator": "==", "value": 1 },
+                "true": {
+                  "condition": { "feature": "Speed-V RND", "operator": ">", "value": 64 },
+                  "true":  { "action": "T-HOLD" },
+                  "false": { "action": "T-OFF" }
+                },
+                "false": {
+                  "condition": { "feature": "Speed-V RND", "operator": ">", "value": 56.5 },
+                  "true":  { "action": "GD" },
+                  "false": {
+                    "condition": { "feature": "Speed-V RND", "operator": ">", "value": 34.5 },
+                    "true":  { "action": "B-ON" },
+                    "false": { "action": "GD" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "false": {
+          "condition": { "feature": "Speed-V RND", "operator": ">", "value": 33.5 },
+          "true":  { "action": "T-HOLD" },
+          "false": {
+            "condition": { "feature": "Dist-Y", "operator": ">", "value": 49 },
+            "true":  { "action": "T-OFF" },
+            "false": {
+              "condition": { "feature": "Dist-Y", "operator": "<=", "value": 49 },
+              "true": {
+                "condition": { "feature": "Dist_YL", "operator": "==", "value": 0 },
+                "true": {
+                  "condition": { "feature": "Lz", "operator": "==", "value": 0 },
+                  "true": {
+                    "condition": { "feature": "Speed-V RND", "operator": ">", "value": 20.5 },
+                    "true":  { "action": "B-ON" },
+                    "false": {
+                      "condition": { "feature": "Speed-L", "operator": ">", "value": 45 },
+                      "true":  { "action": "B-ON" },
+                      "false": {
+                        "condition": { "feature": "Dist_YN", "operator": "==", "value": 0 },
+                        "true":  { "action": "T-ON" },
+                        "false": { "action": "LB-ON" }
+                      }
+                    }
+                  },
+                  "false": {
+                    "condition": { "feature": "Speed-V RND", "operator": ">", "value": 16.5 },
+                    "true":  { "action": "T-ON" },
+                    "false": { "action": "T-ON" }
+                  }
+                },
+                "false": {
+                  "condition": { "feature": "Lz", "operator": "==", "value": 1 },
+                  "true": {
+                    "condition": { "feature": "Dist-Y", "operator": ">", "value": 3.5 },
+                    "true":  { "action": "B-ON" },
+                    "false": { "action": "GD" }
+                  },
+                  "false": {
+                    "condition": { "feature": "Dist_YL", "operator": "==", "value": 1 },
+                    "true":  { "action": "RND-MD" },
+                    "false": { "action": "RND-IN" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "false": { "action": "STOP" }
+  },
+  "false": { "action": "STOP" }
+}
