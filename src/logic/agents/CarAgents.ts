@@ -10,7 +10,7 @@ import distance from "@turf/distance";
 import { CarOption } from "../../utils/types";
 import { destination, bearing } from "@turf/turf";
 import { rawTelemetry, TelemetryRow } from "../../utils/telemetryStore";
-import { evalTree, TreeNode } from "../roundaboutsDecisions";
+import { evalTree, TreeNode } from "../../utils/decisionTree";
 
 
 // Constantes de configuracion

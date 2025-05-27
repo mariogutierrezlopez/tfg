@@ -117,14 +117,3 @@ body,
   stroke-width: 2 !important;
 }
 
-.car-marker {
-  width: 30px;
-  height: 30px;
-  background-image: url('/car-icon.svg'); /* o PNG si prefieres */
-  background-size: contain;
-  background-repeat: no-repeat;
-  pointer-events: none;
-  will-change: transform;
-  transform-origin: center center;
-}
-

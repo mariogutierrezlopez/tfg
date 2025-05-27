@@ -211,14 +211,3 @@ export async function spawnSecondaryCar(
   agentsRef.current = agentsRef.current.filter(a => a.id !== carId);
   agentsRef.current.push(agent);
 }
-
-
-
-
-/* ------------------------------------------------------------------ */
-/* Bearing util                                                        */
-/* ------------------------------------------------------------------ */
-export const getBearing = (
-  from: [number, number],
-  to: [number, number]
-) => Math.atan2(to[0] - from[0], to[1] - from[1]) * (180 / Math.PI);
