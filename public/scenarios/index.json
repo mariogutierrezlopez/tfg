@@ -1,8 +1,8 @@
 [
     {
       "id": "escenario-1",
-      "title": "Rotonda",
-      "description": "Rotonda de la Av. 9 de Julio y Av. Corrientes, Buenos Aires, Argentina",
+      "title": "Rotonda Universidad Politecnica",
+      "description": "28223 Pozuelo de Alarcón, Madrid",
       "csv": "/scenarios/escenario1.csv"
     }
   ]

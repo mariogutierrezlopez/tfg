@@ -9,20 +9,28 @@ const csvSafe = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
 export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
 
-  const carRows = cars.map(c => [
-    c.id, "car", c.carType.id, c.position[0], c.position[1],
-    c.speed, c.maxSpeed, c.targetSpeed,
-    csvSafe(JSON.stringify(c.route)),        // ⬅️
-    csvSafe(JSON.stringify(c.stepSpeeds)),   // ⬅️
-    "", "", "", ""                           // relleno de columnas de reglas
-  ]);
+  const carRows = cars.map(c => {
+    // Para la ruta, nos aseguramos de que el punto inicial está incluido,
+    // ya que la propiedad `originalRoute` del agente almacena el resto del camino.
+    const fullOriginalRoute = [c.initialPosition, ...c.originalRoute];
+    
+    return [
+      c.id, "car", c.carType.id,
+      c.initialPosition[0],                 // CAMBIADO: Usa la posición inicial
+      c.initialPosition[1],                 // CAMBIADO: Usa la posición inicial
+      c.speed, c.maxSpeed, c.targetSpeed,
+      csvSafe(JSON.stringify(fullOriginalRoute)), // CAMBIADO: Usa la ruta original completa
+      csvSafe(JSON.stringify(c.stepSpeeds)),
+      "", "", "", ""                           // Relleno de columnas de reglas
+    ];
+  });
 
   const ruleRows = rules.map(r => [
     r.id, "rule", "",
-    "", "", "", "", "",                     // columnas vacías
+    "", "", "", "", "",                     // Columnas de coche vacías
     "", "",
     r.type,
-    csvSafe(JSON.stringify(r.location)),    // ⬅️ loc seguro
+    csvSafe(JSON.stringify(r.location)),
     r.radius ?? "",
     r.priorityRule ?? ""
   ]);
@@ -38,7 +46,9 @@ export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
   const a    = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "scenario.csv";
-  document.body.appendChild(a); a.click(); a.remove();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 export function importScenarioFromCsv(

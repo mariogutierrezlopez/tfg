@@ -4,6 +4,8 @@ import { SearchBox } from "@mapbox/search-js-react";
 import { useRules } from "../../../context/rulesContext";  // ← tu contexto
 import "./SearchForm.css";
 import InputField from "../../atoms/inputfield/InputField";
+import { isValidDecisionTree } from "../../../utils/decisionTree";
+import { TreeNode } from "../../../utils/decisionTree";
 
 interface Props {
   originText: string;
@@ -21,6 +23,7 @@ interface Props {
   inputMode: "search" | "manual" | "csv";
   setInputMode: (mode: "search" | "manual" | "csv") => void;
   mapRef: React.RefObject<mapboxgl.Map>;
+  onRulesInvalid: (message: string) => void; // función para manejar errores de reglas
 }
 
 const SearchForm: React.FC<Props> = ({
@@ -39,6 +42,7 @@ const SearchForm: React.FC<Props> = ({
   inputMode,
   setInputMode,
   mapRef,
+  onRulesInvalid,
 }) => {
   const { setTree } = useRules();              // ← sacamos setTree del contexto
   const [rulesLoaded, setRulesLoaded] = useState(false);
@@ -63,18 +67,28 @@ const SearchForm: React.FC<Props> = ({
 
 
   /** ------- Funciones para poder arrastrar un archivo al input y reconocer las reglas -------- */
-  const parseRulesFile = async (file: File) => {
+const parseRulesFile = async (file: File) => {
     try {
       const text = await file.text();
-      console.log("JSON text loaded:", text);
       const parsed = JSON.parse(text);
-      console.log("Parsed JSON object:", parsed);
-      setTree(parsed);
-      console.log("setTree called with parsed rules.");
-      setRulesLoaded(true);
+
+      // --- INICIO DE LA MODIFICACIÓN ---
+      if (isValidDecisionTree(parsed)) {
+        // Si las reglas son válidas, las cargamos en el contexto
+        setTree(parsed as TreeNode);
+        setRulesLoaded(true);
+        console.log("✔️ Reglas validadas y cargadas correctamente.");
+      } else {
+        // Si no son válidas, llamamos a la función de error
+        onRulesInvalid("El fichero de reglas JSON no es válido o tiene un formato incorrecto.");
+        console.error("❌ El fichero de reglas no es válido.");
+      }
+      // --- FIN DE LA MODIFICACIÓN ---
+
     } catch (err) {
+      // Si el JSON está malformado y ni siquiera se puede parsear
+      onRulesInvalid("El fichero no es un JSON válido.");
       console.error("Error al parsear JSON de reglas:", err);
-      alert("El JSON de reglas no es válido.");
     }
   };
 

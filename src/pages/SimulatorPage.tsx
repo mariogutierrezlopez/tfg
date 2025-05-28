@@ -32,6 +32,7 @@ import "./SimulationPage.css";
 import { spawnSecondaryCar } from "../utils/carUtils"; // o la función que uses para spawnear
 import SecondaryCarPanel, { Profile } from "../components/organisms/secondarycarpanel/SecondaryCarPanel";
 
+
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
 
 const SimulatorApp: React.FC = () => {
@@ -75,6 +76,9 @@ const SimulatorApp: React.FC = () => {
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const selectedCar = agentsRef.current.find((car) => car.id === selectedCarId);
 
+  const [rulesError, setRulesError] = useState<string | null>(null);
+
+
 
   useSimulationLoop({
     agentsRef,
@@ -117,6 +121,13 @@ const SimulatorApp: React.FC = () => {
     handleRouteCalculation,
     setTrafficRules
   );
+
+  useEffect(() => {
+    if (rulesError) {
+      const timer = setTimeout(() => setRulesError(null), 5000); // El mensaje dura 5 segundos
+      return () => clearTimeout(timer);
+    }
+  }, [rulesError]);
 
   // estados para creación de coche secundario
   const [secondaryOrigin, setSecondaryOrigin] = useState<[number, number] | null>(null);
@@ -351,6 +362,7 @@ const SimulatorApp: React.FC = () => {
             inputMode={inputMode}
             setInputMode={setInputMode}
             mapRef={mapRef}
+            onRulesInvalid={(message) => setRulesError(message)}
           />
         )}
 
@@ -362,6 +374,24 @@ const SimulatorApp: React.FC = () => {
             setMode={setMode}
             onSendSelection={() => { void spawnMainCar(); }}
           />
+        )}
+
+        {rulesError && (
+          <div
+            className="alert alert-danger alert-dismissible fade show"
+            role="alert"
+          >
+            {rulesError}
+            <button
+              type="button"
+              className="custom-close-button"
+              aria-label="Cerrar"
+              onClick={() => setRulesError(null)}
+            >
+              x
+            </button>
+            <div className="progress-bar-timer" />
+          </div>
         )}
 
         {routeStatus && (

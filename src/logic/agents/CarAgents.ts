@@ -43,13 +43,16 @@ export class CarAgent extends TrafficAgent {
 
   public assignedLane: 'inner' | 'outer' | null = null;
   public isInsideRoundabout = false;
-  private originalRoute: [number, number][] = [];
+  public originalRoute: [number, number][] = [];
   public hasLaneBeenAssigned = false;
   public hasConstantSpeed: boolean;
   private prevIsInsideRoundabout = false; // <-- AÑADIDA PROPIEDAD
 
   private roundaboutManeuverPathLength = 0;
   private postRoundaboutContinuationRoute: [number, number][] = [];
+
+  public readonly initialPosition: [number, number]; // <-- AÑADIR ESTA LÍNEA
+
 
   public features: {
     Lz: number;
@@ -81,6 +84,9 @@ export class CarAgent extends TrafficAgent {
     this.originalRoute = [...route];
     this.hasConstantSpeed = hasConstantSpeed;
     this.prevIsInsideRoundabout = this.isInsideRoundabout; // <-- INICIALIZAR AQUÍ
+
+    this.initialPosition = [...position]; // <-- AÑADIR ESTA LÍNEA
+
 
     console.log(`LOG_AGENT (${this.id}): Constructor - Decision tree received:`, decisionTree ? 'Yes' : 'No', `hasConstantSpeed: ${hasConstantSpeed}`);
   }
