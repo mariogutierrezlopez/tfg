@@ -1,4 +1,5 @@
-/* src/utils/carUtils.ts -------------------------------------------------- */
+// src/utils/carUtils.ts
+
 import * as mapboxgl from "mapbox-gl";
 import { CarAgent } from "../logic/agents/CarAgents";
 import carIcon from "../assets/car-top-view.png"
@@ -8,8 +9,9 @@ import { attachMeterScaling } from "./attachMeterScaling";
 import { vehicleSizes } from "./types";
 import { fetchRouteWithSpeeds } from "../utils/mapboxDirections";
 import { resampleRoute } from "./resampleRoute";
-import type { TreeNode } from "./decisionTree";
-import { TreeNode } from "../logic/roundaboutsDecisions";
+// import type { TreeNode } from "./decisionTree";
+
+import { TreeNode } from "../utils/decisionTree";
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
@@ -100,7 +102,8 @@ export async function spawnCar(
     marker,
     carType,
     stepSpeeds,
-    decisionTree
+    decisionTree,
+    false // <-- MODIFICACIÓN: Los coches principales NO tienen velocidad constante
   );
   (agent as any).detachZoom = detach;
 
@@ -171,12 +174,10 @@ export async function spawnSecondaryCar(
   });
 
   // 3) creamos un marcador con tu icono escalable
-  //    extraemos del vehicleSizes el tamaño en metros
   const cfg = vehicleSizes["secondary"] ?? { w: 36, h: 60 };
   const wM = (cfg as any).wM ?? cfg.w / 20;
   const lM = (cfg as any).lM ?? cfg.h / 20;
 
-  // creamos el elemento HTML con tu icono top-view
   const el = createCarIcon(carIcon, "secondary", carId);
 
   const marker = new mapboxgl.Marker({
@@ -188,7 +189,6 @@ export async function spawnSecondaryCar(
     .setLngLat(origin)
     .addTo(map);
 
-  // atamos el escalado en función del zoom/latitud
   const detach = attachMeterScaling(map, marker, wM, lM);
 
   // 4) agente que se moverá con velocidad constante
@@ -202,9 +202,9 @@ export async function spawnSecondaryCar(
     marker,
     { id: "secondary", name: "sec", image: carIcon },
     stepSpeeds,
-    null
+    null,
+    true // <-- MODIFICACIÓN: Los coches secundarios SÍ tienen velocidad constante
   );
-  // guardamos la función para desconectar el listener si removemos el agente
   (agent as any).detachZoom = detach;
 
   // 5) añadimos o reemplazamos el agente en la lista

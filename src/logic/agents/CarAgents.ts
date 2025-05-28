@@ -1,14 +1,17 @@
+// src/logic/agents/CarAgents.ts
+
 import { TrafficAgent } from "./TrafficAgent";
 import { TrafficElement } from "../../utils/types";
 import {
-  point as turfPoint,
-  lineString,
+  point as turfPoint, // Usar turfPoint
+  lineString,         // Usar lineString directamente
   distance as turfDistance,
-  nearestPointOnLine,
+  nearestPointOnLine, // Usar nearestPointOnLine directamente
+  bearing,            // Usar bearing directamente
+  destination         // Usar destination directamente
 } from "@turf/turf";
 import distance from "@turf/distance";
 import { CarOption } from "../../utils/types";
-import { destination, bearing } from "@turf/turf";
 import { rawTelemetry, TelemetryRow } from "../../utils/telemetryStore";
 import { evalTree, TreeNode } from "../../utils/decisionTree";
 
@@ -16,9 +19,12 @@ import { evalTree, TreeNode } from "../../utils/decisionTree";
 // Constantes de configuracion
 // ------------------------------------------------
 //Velocidad máxima de entrada a la rotonda
-const ENTRY_LIMIT = 4.17;      // m/s  
+const ENTRY_LIMIT = 4.17;       // m/s  
 // Margen de seguridad entre coches
 const EXTRA_MARGIN = 3;         // m
+
+const MIN_STEP_DIST = 0.05; // Definir MIN_STEP_DIST aquí para que esté disponible en la clase
+
 
 export class CarAgent extends TrafficAgent {
   maxSpeed: number;
@@ -28,12 +34,22 @@ export class CarAgent extends TrafficAgent {
   lastRotation = 0;
   private processedRuleIds: Set<string> = new Set();
   public totalDistance = 0;
-  private insideRoundaboutIds: Set<string> = new Set(); // 🆕 múltiples rotondas
+  private insideRoundaboutIds: Set<string> = new Set();
   targetSpeed = 0;
-  currentStepSpeed: number = 0; // velocidad actual del paso
+  currentStepSpeed: number = 0;
   prevPosition: [number, number];
   private decisionTree: TreeNode | null;
-  public usingDecisionTree = false; //Flag para saber si se está usando el árbol de decisiones
+  public usingDecisionTree = false;
+
+  public assignedLane: 'inner' | 'outer' | null = null;
+  public isInsideRoundabout = false;
+  private originalRoute: [number, number][] = [];
+  public hasLaneBeenAssigned = false;
+  public hasConstantSpeed: boolean;
+  private prevIsInsideRoundabout = false; // <-- AÑADIDA PROPIEDAD
+
+  private roundaboutManeuverPathLength = 0;
+  private postRoundaboutContinuationRoute: [number, number][] = [];
 
   public features: {
     Lz: number;
@@ -51,28 +67,185 @@ export class CarAgent extends TrafficAgent {
     marker: mapboxgl.Marker,
     carType: CarOption,
     public stepSpeeds: number[] = [],
-    decisionTree: TreeNode | null = null
+    decisionTree: TreeNode | null = null,
+    hasConstantSpeed: boolean = false
   ) {
     super(id, position, route, marker, carType.id);
     this.maxSpeed = 100;
     this.targetSpeed = stepSpeeds[0] ?? this.maxSpeed;
     this.acceleration = 2;
     this.carType = carType;
-    this.prevPosition = [...position]; // ⬅️ Añade esta línea
-    //console.log(`[${id}] CarAgent creado con stepSpeeds:`, stepSpeeds);
-    this.decisionTree = decisionTree;
+    this.prevPosition = [...position];
+     this.decisionTree = hasConstantSpeed ? null : decisionTree;
     this.features = { Lz: 0, Cz: 0, Rz: 0, LL: 0, RL: 0 };
+    this.originalRoute = [...route];
+    this.hasConstantSpeed = hasConstantSpeed;
+    this.prevIsInsideRoundabout = this.isInsideRoundabout; // <-- INICIALIZAR AQUÍ
+
+    console.log(`LOG_AGENT (${this.id}): Constructor - Decision tree received:`, decisionTree ? 'Yes' : 'No', `hasConstantSpeed: ${hasConstantSpeed}`);
   }
 
   private getCurrentStepSpeed(): number {
-    /*  stepSpeeds.length == nº de segmentos (N)
-        this.route.length  == nodos que aún quedan (N, N-1, …, 0)
-  
-        Índice del tramo = N − this.route.length                    */
     const idx = this.stepSpeeds.length - this.route.length;
-
-    /*  Clamp por si ya hemos llegado al final (route.length == 0)   */
     return this.stepSpeeds[Math.min(idx, this.stepSpeeds.length - 1)] ?? this.maxSpeed;
+  }
+
+  // Modifica esta función completamente:
+public assignRoundaboutLane(
+    _innerLaneCoords: [number, number][],
+    _outerLaneCoords: [number, number][],
+    currentRoundaboutRule?: TrafficElement
+  ) {
+    if (this.hasLaneBeenAssigned) {
+      return;
+    }
+    console.log(`LOG_AGENT (${this.id}): ----- INICIO assignRoundaboutLane (Versión Mejorada) -----`);
+
+    if (!currentRoundaboutRule?.geometry || currentRoundaboutRule.geometry.length < 1) {
+      console.error(`LOG_AGENT (${this.id}): ERROR No hay currentRoundaboutRule.geometry válida.`);
+      return;
+    }
+
+    const roundaboutManeuverPath = [...currentRoundaboutRule.geometry];
+    this.roundaboutManeuverPathLength = roundaboutManeuverPath.length;
+
+    // --- LÓGICA DE EMPALME DE RUTA MEJORADA ---
+    
+    this.postRoundaboutContinuationRoute = [];
+    const apiPathExitPoint = roundaboutManeuverPath[roundaboutManeuverPath.length - 1];
+    
+    // 1. Encontrar el índice del punto de entrada en la ruta original
+    const entryPoint = roundaboutManeuverPath[0];
+    let entryIndex = -1;
+    let minEntryDist = Infinity;
+    this.originalRoute.forEach((p, idx) => {
+        const d = turfDistance(turfPoint(p), turfPoint(entryPoint));
+        if (d < minEntryDist) {
+            minEntryDist = d;
+            entryIndex = idx;
+        }
+    });
+
+    // 2. Buscar el punto MÁS CERCANO a la salida, pero solo DESPUÉS de la entrada
+    let apiPathExitIndexInOriginalRoute = -1;
+    let minExitDist = Infinity;
+
+    if (entryIndex !== -1) {
+        for (let i = entryIndex; i < this.originalRoute.length; i++) {
+            const p = this.originalRoute[i];
+            const d = turfDistance(turfPoint(p), turfPoint(apiPathExitPoint));
+            if (d < minExitDist) {
+                minExitDist = d;
+                apiPathExitIndexInOriginalRoute = i;
+            }
+        }
+    }
+
+    // 3. Comprobar si el punto encontrado es suficientemente bueno (dentro de una tolerancia)
+    const MAX_EXIT_DISTANCE_TOLERANCE = 20; // metros
+    if (apiPathExitIndexInOriginalRoute !== -1 && minExitDist < MAX_EXIT_DISTANCE_TOLERANCE) {
+        // La ruta de continuación es todo lo que sigue DESPUÉS del punto de empalme.
+        // Usamos `+ 1` para no incluir el punto de empalme, que ya está en la maniobra.
+        this.postRoundaboutContinuationRoute = this.originalRoute.slice(apiPathExitIndexInOriginalRoute + 1);
+    } else {
+        console.warn(`LOG_AGENT (${this.id}): No se encontró punto de continuación. El coche se detendrá. Distancia mínima a salida: ${minExitDist.toFixed(2)}m`);
+        this.postRoundaboutContinuationRoute = [];
+    }
+    
+    // --- FIN DE LA LÓGICA MEJORADA ---
+
+    console.log(`LOG_AGENT (${this.id}): Ruta de continuación post-maniobra, longitud: ${this.postRoundaboutContinuationRoute.length}.`);
+
+    this.route = [...roundaboutManeuverPath, ...this.postRoundaboutContinuationRoute];
+    this.assignedLane = null;
+    this.hasLaneBeenAssigned = true;
+    this.isInsideRoundabout = true;
+
+    console.log(`LOG_AGENT (${this.id}): Nueva ruta total asignada, longitud: ${this.route.length}.`);
+    console.log(`LOG_AGENT (${this.id}): ----- FIN assignRoundaboutLane -----`);
+  }
+
+  // La función updatePosition que te di en el mensaje anterior (con el decremento de roundaboutManeuverPathLength)
+  // debería seguir funcionando bien con este cambio. Revisa que la tengas así:
+  public updatePosition(dt: number) {
+    if (this.isInsideRoundabout !== this.prevIsInsideRoundabout) {
+      console.log(
+        `LOG_AGENT (${this.id}): isInsideRoundabout CAMBIÓ de ${this.prevIsInsideRoundabout} a ${this.isInsideRoundabout}. ` +
+        `Pos: ${this.position[0].toFixed(2)},${this.position[1].toFixed(2)}. ` +
+        `Ruta restante: ${this.route.length}`
+      );
+      this.prevIsInsideRoundabout = this.isInsideRoundabout;
+    }
+
+    this.prevPosition = [...this.position];
+    this.currentStepSpeed = this.getCurrentStepSpeed();
+    const currentMaxSpeed = this.isInsideRoundabout ? ENTRY_LIMIT : this.currentStepSpeed;
+    this.maxSpeed = currentMaxSpeed;
+    this.targetSpeed = Math.min(this.targetSpeed, currentMaxSpeed);
+
+    if (this.speed < this.targetSpeed) {
+      this.speed = Math.min(this.targetSpeed, this.speed + this.acceleration * dt);
+    } else if (this.speed > this.targetSpeed) {
+      this.speed = Math.max(this.targetSpeed, this.speed - this.acceleration * dt);
+    }
+
+    if (this.route.length === 0) {
+      if (this.isInsideRoundabout) {
+        console.warn(`LOG_AGENT (${this.id}): Estaba en maniobra de rotonda pero se quedó sin ruta. Marcando salida.`);
+        this.isInsideRoundabout = false;
+        this.assignedLane = null;
+      }
+      return;
+    }
+
+    const next = this.route[0];
+    const curPt = turfPoint(this.position);
+    const nextPt = turfPoint(next);
+    const distToNxt = turfDistance(curPt, nextPt, { units: "meters" });
+
+    const SNAP_THRESHOLD = 0.5;
+
+    if (distToNxt < SNAP_THRESHOLD) {
+      this.position = [...next];
+      this.route.shift();
+
+      if (this.isInsideRoundabout) { // Solo decrementa si aún se considera en la maniobra de rotonda
+        this.roundaboutManeuverPathLength--;
+        if (this.roundaboutManeuverPathLength <= 0) {
+          console.log(`LOG_AGENT (${this.id}): Parte de maniobra de rotonda de Mapbox completada.`);
+          this.isInsideRoundabout = false;
+          this.assignedLane = null;
+          if (this.route.length === 0) {
+            console.warn(`LOG_AGENT (${this.id}): Maniobra rotonda y ruta de continuación vacías. El coche se detendrá.`);
+          } else {
+            console.log(`LOG_AGENT (${this.id}): Transicionando a ruta de continuación ya en this.route. Puntos restantes: ${this.route.length}`);
+          }
+        }
+      } else if (this.route.length === 0) { // Si no estaba en rotonda y la ruta se acaba, es el fin.
+        console.log(`LOG_AGENT (${this.id}): Ruta final/segmento completado (SNAP_THRESHOLD).`);
+      }
+
+      if (this.route.length === 0) return;
+
+    } else {
+      const ang = bearing(curPt, nextPt);
+      const stepLen = Math.max(this.speed * dt, MIN_STEP_DIST);
+      const moved = destination(curPt, stepLen, ang, { units: "meters" });
+      this.position = moved.geometry.coordinates as [number, number];
+    }
+
+    this.totalDistance += Math.max(this.speed * dt, MIN_STEP_DIST) / 1000;
+
+    if (this.position[0] !== this.prevPosition[0] || this.position[1] !== this.prevPosition[1]) {
+      if (this.route.length > 0) {
+        const rawBearingToNext = bearing(turfPoint(this.position), turfPoint(this.route[0]));
+        const targetRot = (rawBearingToNext + 360) % 360;
+        let delta = targetRot - this.lastRotation;
+        if (delta > 180) delta -= 360; else if (delta < -180) delta += 360;
+        this.lastRotation = (this.lastRotation + delta * 0.2 + 360) % 360;
+      }
+    }
+    this.marker.setRotation(this.lastRotation);
   }
 
   private distanceToRoundaboutCenter(rules: TrafficElement[]): number {
@@ -84,193 +257,197 @@ export class CarAgent extends TrafficAgent {
       { units: "meters" }
     );
   }
-
-
-
   public reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
-    // console.group(`[${this.id}] reactToTrafficRules start`);
-    //console.log("Posición:", this.position);
-    //console.log("Velocidad actual (m/s):", this.speed.toFixed(2));
-    //console.log("targetSpeed previo (m/s):", this.targetSpeed.toFixed(2));
-    //console.log("currentStepSpeed (m/s):", this.currentStepSpeed.toFixed(2));
-    //console.log("insideRoundaboutIds:", [...this.insideRoundaboutIds]);
-    //console.log("stopped:", this.stopped);
+    if (this.hasConstantSpeed) {
+      this.targetSpeed = this.getCurrentStepSpeed();
+      return;
+    }
 
+    // Intentar encontrar LA regla de rotonda más relevante para el reseteo de hasLaneBeenAssigned
+    // Esto podría necesitar una lógica más sofisticada si hay múltiples rotondas muy cercanas.
+    // Por ahora, usaremos la primera que encuentre o la más cercana si hay varias.
+    let relevantRoundaboutRule: TrafficElement | undefined = rules.find(r => r.type === "roundabout");
+    if (rules.filter(r => r.type === "roundabout").length > 1) {
+      let minDist = Infinity;
+      rules.filter(r => r.type === "roundabout").forEach(r => {
+        const d = turfDistance(turfPoint(this.position), turfPoint(r.location), { units: "meters" });
+        if (d < minDist) {
+          minDist = d;
+          relevantRoundaboutRule = r;
+        }
+      });
+    }
 
-    this.usingDecisionTree = false; //Limpia el flag al inicio de la función
+    // Resetear hasLaneBeenAssigned si estamos suficientemente lejos de la rotonda Y no estamos dentro
+    if (relevantRoundaboutRule && this.hasLaneBeenAssigned && !this.isInsideRoundabout) {
+      const distToRelevantRoundCenter = turfDistance(turfPoint(this.position), turfPoint(relevantRoundaboutRule.location), { units: "meters" });
+      // Aumentar este umbral si es necesario, ej. 50 o 60 metros
+      if (distToRelevantRoundCenter > 50) {
+        console.log(`LOG_AGENT (${this.id}): Lejos de rotonda ${relevantRoundaboutRule.id} (${distToRelevantRoundCenter.toFixed(1)}m) y fuera. Reseteando hasLaneBeenAssigned.`);
+        this.hasLaneBeenAssigned = false;
+        // Nota: assignedLane ya debería ser null si isInsideRoundabout es false después de salir.
+      }
+    }
 
-    // buscamo rotonda
-    const round = rules.find(r => r.type === "roundabout");
+    this.usingDecisionTree = false;
+    const roundForDecision = relevantRoundaboutRule; // Usar la rotonda relevante para la lógica de decisión
 
-    if(this.decisionTree == null) console.warn("⚠️ Decision tree is null, using legacy logic only.");
+    if (this.id === "main-car" && this.decisionTree == null) {
+      console.warn(`LOG_TREE (${this.id}): ⚠️ Decision tree es null, usando lógica legacy.`);
+    }
 
-    // ─── 1) LÓGICA DINÁMICA ─────────────────────────────
-    if (this.decisionTree && round) {
-      //console.log("🔧 Usando decisionTree (solo dentro de rotonda)");
-
-      // distancia al centro
+    if (this.decisionTree && roundForDecision) {
       const distY = turfDistance(
         turfPoint(this.position),
-        turfPoint(round.location),
+        turfPoint(roundForDecision.location), // Usar roundForDecision.location
         { units: "meters" }
       );
-      //console.log("Feature distY:", distY.toFixed(1));
 
-      if (distY <= 100) {
-        this.usingDecisionTree = true; //Se activa el flag si se está usando el árbol de decisiones
-
-        console.log("Se está usando el árbol de decisiones para la rotonda:", round.id);
-        // armamos inputs
+      if (distY <= 100) { // Usar el árbol si está a 100m o menos de esta rotonda
+        this.usingDecisionTree = true;
         const inputs: Record<string, number> = {
           speedVRnd: this.speed,
           distY,
           speedL: this.currentStepSpeed,
-          Dist_YL: this.insideRoundaboutIds.has(round.id) ? 1 : 0,
-          Dist_YN: this.insideRoundaboutIds.has(round.id) ? 0 : 1,
-          Lz: this.stopped ? 1 : 0,
+          Dist_YL: this.isInsideRoundabout ? 1 : 0, // Este isInsideRoundabout es el estado general del coche
+          Dist_YN: !this.isInsideRoundabout ? 1 : 0,
+          Lz: this.features.Lz, Cz: this.features.Cz, RL: this.features.RL, LL: this.features.LL,
         };
-        //console.log("Inputs for evalTree:", inputs);
 
+        if (this.id === "main-car" && (this.features.Lz === 1 || this.features.Cz === 1 || this.features.Rz === 1)) {
+          console.log(
+            `LOG_TREE (${this.id}): ÁRBOL con Zona(s) Ocupada(s) Lz=${this.features.Lz},Cz=${this.features.Cz},Rz=${this.features.Rz}. Inputs: ` +
+            `distY=${inputs.distY.toFixed(1)}, speedVRnd=${inputs.speedVRnd.toFixed(1)}, isInsideRnd=${inputs.Dist_YL}`
+          );
+        }
         const action = evalTree(this.decisionTree, inputs);
-        //console.log("evalTree result:", action);
-
-        // aplicamos acción
-        switch (action) {
-          case "GD":
-            this.targetSpeed = this.maxSpeed;
-            //console.log("→ GD: targetSpeed = maxSpeed", this.maxSpeed.toFixed(2));
-            break;
-          case "T-HOLD":
-          case "STOP":
-            this.speed = 0;
-            //console.log("→ STOP/T-HOLD: speed = 0");
-            break;
-          case "T-OFF":
-          case "B-ON":
-            this.targetSpeed = 0;
-            //console.log("→ T-OFF/B-ON: targetSpeed = 0");
-            break;
-          case "T-ON":
-            this.targetSpeed = this.currentStepSpeed;
-            //console.log("→ T-ON: targetSpeed = currentStepSpeed", this.currentStepSpeed.toFixed(2));
-            break;
-          case "LB-ON":
-            this.targetSpeed = Math.min(this.currentStepSpeed, ENTRY_LIMIT);
-            //console.log("→ LB-ON: targetSpeed = clamp(", this.currentStepSpeed.toFixed(2), ", ENTRY_LIMIT)");
-            break;
-          case "RND-MD":
-          case "RND-IN":
-            this.targetSpeed = ENTRY_LIMIT;
-            //console.log(`→ ${action}: targetSpeed = ENTRY_LIMIT`, ENTRY_LIMIT.toFixed(2));
-            break;
-          default:
-            //console.log("→ Acción desconocida:", action);
-            break;
+        if (this.id === "main-car" && (this.features.Lz === 1 || this.features.Cz === 1 || this.features.Rz === 1)) {
+          console.log(`LOG_TREE (${this.id}): ÁRBOL ACCIÓN con Zona(s) Ocupada(s) -> ${action}`);
         }
 
+        switch (action) { /* ... tu switch case ... */ }
 
-        // console.groupEnd();
-        return;
+        // Lógica de salida si el árbol de decisión estaba activo y el coche se aleja
+        if (this.isInsideRoundabout) {
+          const distToCurrentRoundCenter = turfDistance(this.position, roundForDecision.location, { units: 'meters' });
+          if (distToCurrentRoundCenter > roundForDecision.radius + 15) { // Umbral de salida
+            console.log(`LOG_AGENT (${this.id}): Saliendo de rotonda ${roundForDecision.id} (lógica árbol, dist: ${distToCurrentRoundCenter.toFixed(1)}m).`);
+            this.isInsideRoundabout = false;
+            this.assignedLane = null;
+            // NO resetear hasLaneBeenAssigned aquí, se hará cuando esté más lejos.
+          }
+        }
+        return; // Si el árbol de decisión actuó, no ejecutar lógica legacy para esta rotonda
       }
-
-      //console.log("→ Fuera de zona de decisión del árbol (> 100 m)");
     }
 
-    // ─── 2) LÓGICA LEGACY ────────────────────────────────
-    //console.log("🔧 Usando lógica legacy");
-
-    // 0) Limpieza de salidas de rotonda
-    for (const rule of rules) {
+    // Lógica Legacy (se aplicará si el árbol no se usó, o para reglas que no son la 'relevantRoundaboutRule')
+    for (const rule of rules) { // Iterar sobre todas las reglas para la lógica legacy
       if (rule.type !== "roundabout") continue;
-      const dCenter = distance(
-        turfPoint(this.position),
-        turfPoint(rule.location),
-        { units: "meters" }
-      );
-      if (this.insideRoundaboutIds.has(rule.id) && dCenter > rule.radius + 1) {
-        //console.log(`→ Sale de ${rule.id}, dCenter=${dCenter.toFixed(1)} > R+1`);
+      const dCenter = turfDistance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
+
+      if (this.insideRoundaboutIds.has(rule.id) && dCenter > rule.radius + (this.assignedLane ? 5 : 1)) {
+        console.log(`LOG_AGENT (${this.id}): Saliendo de rotonda ${rule.id} (lógica legacy).`);
         this.insideRoundaboutIds.delete(rule.id);
-        if (this.stopped) {
-          //console.log("→ Liberando stop tras salir de rotonda");
-          this.stopped = false;
-        }
+        this.isInsideRoundabout = false;
+        this.assignedLane = null;
+        // NO resetear hasLaneBeenAssigned aquí
+        if (this.stopped) this.stopped = false;
       }
     }
 
-    if (this.stopped) {
-      //console.log("→ Está detenido, stopTimer =", this.stopTimer.toFixed(2));
-      // console.groupEnd();
-      return;
-    }
+    if (this.usingDecisionTree) return; // Si el árbol ya manejó la rotonda principal, no aplicar legacy de velocidad para ella.
 
+    // ... (resto de tu lógica legacy de frenado y control de velocidad, sin cambios) ...
+    if (this.stopped) { return; }
     let shouldSlowDown = false;
-
     for (const rule of rules) {
-      const d = distance(
-        turfPoint(this.position),
-        turfPoint(rule.location),
-        { units: "meters" }
-      );
-      //console.log(`Regla ${rule.id}, tipo=${rule.type}, d=${d.toFixed(1)}`);
-
+      const dToRuleCenter = distance(turfPoint(this.position), turfPoint(rule.location), { units: "meters" });
       if (rule.type === "roundabout") {
-        const isInside = d < rule.radius;
-        //console.log(`  Dentro de rotonda? ${isInside}`);
-        if (isInside) {
-          if (!this.insideRoundaboutIds.has(rule.id)) {
-            //console.log(`  Entra en ${rule.id}`);
-            this.insideRoundaboutIds.add(rule.id);
-          }
+        if (this.isInsideRoundabout && this.assignedLane) {
           this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
-          shouldSlowDown = true;
-          continue;
+          shouldSlowDown = true; continue;
         }
-
-        const brakingDist = Math.max(
-          0,
-          (this.speed * this.speed - ENTRY_LIMIT * ENTRY_LIMIT) /
-          (2 * this.acceleration)
-        );
-        const isApproaching = d < rule.radius + brakingDist + EXTRA_MARGIN;
-        //console.log(`  isApproaching? ${isApproaching} (brakingDist=${brakingDist.toFixed(1)})`);
-
-        if (isApproaching && !this.insideRoundaboutIds.has(rule.id)) {
-          const carsInside = others.filter(o => o.insideRoundaboutIds.has(rule.id));
-          //console.log(`  cochesInside=${carsInside.length}`);
-          if (carsInside.length > 0) {
-            //console.log("  Stop-and-wait activado");
-            this.stopped = true;
-            this.stopTimer = 1.0;
-            this.speed = 0;
-            this.targetSpeed = 0;
-            // console.groupEnd();
-            return;
+        const brakingDist = Math.max(0, (this.speed * this.speed - ENTRY_LIMIT * ENTRY_LIMIT) / (2 * this.acceleration));
+        const isApproaching = dToRuleCenter < rule.radius + brakingDist + EXTRA_MARGIN;
+        if (isApproaching && !this.hasLaneBeenAssigned) { // Solo si no ha gestionado esta rotonda aún
+          const carsInsideThisRoundabout = others.filter(o => o.isInsideRoundabout && o.insideRoundaboutIds.has(rule.id));
+          if (carsInsideThisRoundabout.length > 0) {
+            console.log(`LOG_AGENT (${this.id}): LEGACY - Detenido por coche dentro de rotonda ${rule.id}`);
+            this.stopped = true; this.stopTimer = 1.0; this.speed = 0; this.targetSpeed = 0; return;
           }
-          //console.log("  Frenando a ENTRY_LIMIT");
           this.speed = Math.min(this.speed, ENTRY_LIMIT);
           this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
           shouldSlowDown = true;
         }
       }
-
-      if (rule.priorityRule === "give-way" && d < rule.radius + 15) {
-        //console.log("  Ceda el paso: ajustando targetSpeed a 1.0");
-        this.targetSpeed = Math.min(this.targetSpeed, 1.0);
-        shouldSlowDown = true;
+      if (rule.priorityRule === "give-way" && dToRuleCenter < (rule.radius || 10) + 15) {
+        this.targetSpeed = Math.min(this.targetSpeed, 1.0); shouldSlowDown = true;
       }
     }
-
-    if (!shouldSlowDown) {
-      //console.log("  Recuperando velocidad normal:", this.currentStepSpeed.toFixed(2));
-      this.targetSpeed = this.insideRoundaboutIds.size
-        ? ENTRY_LIMIT
-        : this.currentStepSpeed;
+    if (!shouldSlowDown && !this.isInsideRoundabout) {
+      this.targetSpeed = this.currentStepSpeed;
+    } else if (this.isInsideRoundabout) {
+      this.targetSpeed = Math.min(this.targetSpeed, ENTRY_LIMIT);
     }
-    //console.log("targetSpeed final:", this.targetSpeed.toFixed(2));
-    // console.groupEnd();
   }
 
 
+
+  reactToOtherCars(others: CarAgent[], rules: TrafficElement[]) {
+    if (this.hasConstantSpeed) {
+      this.targetSpeed = this.getCurrentStepSpeed();
+      return;
+    }
+
+    if (this.stopped) return;
+    let shouldSlow = false;
+
+    for (const other of others) {
+      if (other.id === this.id) continue;
+
+      for (const rule of rules) {
+        if (rule.type !== "roundabout") continue;
+        if (this.isApproachingSameRoundaboutEntry(other, rule)) {
+          const iAmInside = this.isInsideRoundabout && this.insideRoundaboutIds.has(rule.id);
+          const otherIsInside = other.isInsideRoundabout && other.insideRoundaboutIds.has(rule.id);
+
+          if (iAmInside && !otherIsInside) continue;
+          if (!iAmInside && otherIsInside) {
+            if (this.id === "main-car") { // Log solo para el coche principal para no saturar
+              console.log(`LOG_AGENT (${this.id}): Cediendo paso a ${other.id} en rotonda ${rule.id}.`);
+            }
+            this.targetSpeed = 0; shouldSlow = true; break;
+          }
+        }
+      }
+      if (shouldSlow) break;
+
+      const distToOther = distance(turfPoint(this.position), turfPoint(other.position), { units: "meters" });
+      const inFront = this.isInFront(other);
+
+      if (this.isInsideRoundabout && other.isInsideRoundabout && this.assignedLane === other.assignedLane) {
+        if (inFront && distToOther < 10) {
+          this.targetSpeed = Math.min(this.targetSpeed, Math.max(0, other.speed - 1));
+          shouldSlow = true;
+        }
+      } else if (!this.isInsideRoundabout && !other.isInsideRoundabout) {
+        if (inFront && distToOther < 8 && other.speed < 0.1) {
+          this.targetSpeed = 0; shouldSlow = true; break;
+        }
+        if (inFront && distToOther < 10) {
+          this.targetSpeed = Math.min(this.targetSpeed, 1.5); shouldSlow = true;
+        } else if (inFront && distToOther < 20) {
+          this.targetSpeed = Math.min(this.targetSpeed, 3.0); shouldSlow = true;
+        }
+      }
+    }
+
+    if (!shouldSlow) {
+      this.targetSpeed = this.isInsideRoundabout ? ENTRY_LIMIT : this.currentStepSpeed;
+    }
+    this.targetSpeed = Math.min(this.targetSpeed, this.isInsideRoundabout ? ENTRY_LIMIT : this.currentStepSpeed);
+  }
 
 
 
@@ -279,22 +456,10 @@ export class CarAgent extends TrafficAgent {
     if (this.route.length < 1) return false;
     const next = this.route[0];
 
-    if (
-      !next ||
-      !Array.isArray(next) ||
-      next.length !== 2 ||
-      isNaN(next[0]) ||
-      isNaN(next[1]) ||
-      !Array.isArray(this.position) ||
-      this.position.length !== 2 ||
-      isNaN(this.position[0]) ||
-      isNaN(this.position[1]) ||
-      !Array.isArray(rule.location) ||
-      rule.location.length !== 2 ||
-      isNaN(rule.location[0]) ||
-      isNaN(rule.location[1]) ||
-      (this.position[0] === next[0] && this.position[1] === next[1]) // 👈 esta línea evita segmentos vacíos
-    ) {
+    if (!next || !Array.isArray(next) || next.length !== 2 || isNaN(next[0]) || isNaN(next[1]) ||
+      !Array.isArray(this.position) || this.position.length !== 2 || isNaN(this.position[0]) || isNaN(this.position[1]) ||
+      !Array.isArray(rule.location) || rule.location.length !== 2 || isNaN(rule.location[0]) || isNaN(rule.location[1]) ||
+      (this.position[0] === next[0] && this.position[1] === next[1])) {
       console.warn("⚠️ Segmento inválido en hasPassedRule, se omite.");
       return false;
     }
@@ -303,235 +468,58 @@ export class CarAgent extends TrafficAgent {
     const rulePt = turfPoint(rule.location);
     const snapped = nearestPointOnLine(seg, rulePt);
 
-    const distToRule = turfDistance(turfPoint(this.position), rulePt, {
-      units: "meters",
-    });
-    const distToSnapped = turfDistance(turfPoint(this.position), snapped, {
-      units: "meters",
-    });
+    const distToRule = distance(turfPoint(this.position), rulePt, { units: "meters" });
+    const distToSnapped = distance(turfPoint(this.position), snapped, { units: "meters" });
 
     this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
-
     return distToSnapped > distToRule;
   }
+
+
 
   isInFront(other: CarAgent): boolean {
     const [lng1, lat1] = this.position;
     const [lng2, lat2] = other.position;
 
     const dirToOther = Math.atan2(lng2 - lng1, lat2 - lat1) * (180 / Math.PI);
-    const myDirection =
-      this.route.length >= 1
-        ? Math.atan2(this.route[0][0] - lng1, this.route[0][1] - lat1) *
-        (180 / Math.PI)
-        : 0;
+    const myDirection = this.route.length >= 1 ? bearing(turfPoint(this.position), turfPoint(this.route[0])) : this.lastRotation;
 
-    const angleDiff = Math.abs(dirToOther - myDirection);
+    let angleDiff = Math.abs(dirToOther - myDirection);
+    if (angleDiff > 180) angleDiff = 360 - angleDiff;
     return angleDiff < 60;
   }
 
-  /* ───────────────────────────────────────────────
-   2) isApproachingSameRoundaboutEntry  ▶ ajustado
-   ─────────────────────────────────────────────── */
-  private isApproachingSameRoundaboutEntry(
-    other: CarAgent,
-    roundabout: TrafficElement
-  ): boolean {
-    const myDist = distance(
-      turfPoint(this.position),
-      turfPoint(roundabout.location),
-      { units: "meters" }
-    );
-    const otherDist = distance(
-      turfPoint(other.position),
-      turfPoint(roundabout.location),
-      { units: "meters" }
-    );
+  private isApproachingSameRoundaboutEntry(other: CarAgent, roundabout: TrafficElement): boolean {
+    const myDist = distance(turfPoint(this.position), turfPoint(roundabout.location), { units: "meters" });
+    const otherDist = distance(turfPoint(other.position), turfPoint(roundabout.location), { units: "meters" });
 
-    const bothClose =
-      myDist < roundabout.radius + 15 && otherDist < roundabout.radius + 15;
-    const oneInside =
-      this.insideRoundaboutIds.has(roundabout.id) !==
-      other.insideRoundaboutIds.has(roundabout.id);
+    const bothClose = myDist < roundabout.radius + 15 && otherDist < roundabout.radius + 15;
 
-    /* misma entrada (±35°) */
-    const myBearing = bearing(
-      turfPoint(roundabout.location),
-      turfPoint(this.position)
-    );
-    const otherBearing = bearing(
-      turfPoint(roundabout.location),
-      turfPoint(other.position)
-    );
-    const sameArm = Math.abs(myBearing - otherBearing) < 35;
+    const iAmEffectivelyInside = this.isInsideRoundabout && this.insideRoundaboutIds.has(roundabout.id);
+    const otherIsEffectivelyInside = other.isInsideRoundabout && other.insideRoundaboutIds.has(roundabout.id);
 
-    return bothClose && oneInside && sameArm;
+    const oneInsideTheOtherApproaching = (iAmEffectivelyInside && !otherIsEffectivelyInside && otherDist < roundabout.radius + 15) ||
+      (!iAmEffectivelyInside && otherIsEffectivelyInside && myDist < roundabout.radius + 15);
+
+    if (!oneInsideTheOtherApproaching) return false;
+
+    const myBearingToCenter = bearing(turfPoint(this.position), turfPoint(roundabout.location));
+    const otherBearingToCenter = bearing(turfPoint(other.position), turfPoint(roundabout.location));
+
+    let armAngleDiff = Math.abs(myBearingToCenter - otherBearingToCenter);
+    if (armAngleDiff > 180) armAngleDiff = 360 - armAngleDiff;
+
+    return armAngleDiff < 70;
   }
 
-  /** Registra una fila cada 50 m (= 0.05 km) */
+
   public maybeLog(car: CarAgent, simTime: number) {
     const row: TelemetryRow = {
-      id: car.id,
-      ts: Date.now(),
-      lat: car.position[1],
-      lng: car.position[0],
-      speedKmh: car.speed * 3.6,
-      direction: car.lastRotation,
-      distance: car.totalDistance, // km
-      simTime,
+      id: car.id, ts: Date.now(), lat: car.position[1], lng: car.position[0],
+      speedKmh: car.speed * 3.6, direction: car.lastRotation,
+      distance: car.totalDistance, simTime,
     };
-
     (rawTelemetry[car.id] ??= []).push(row);
   }
-  updatePosition(dt: number) {
-    /* -----------------------------------------
-       0.  Copia posición previa
-    ----------------------------------------- */
-    this.prevPosition = [...this.position];
 
-    /* -----------------------------------------
-       1.  Velocidad objetivo y frenadas
-    ----------------------------------------- */
-    // const totalRoute = this.route.length + 1;
-    // const stepIndex = Math.max(0, this.stepSpeeds.length - totalRoute);
-    this.currentStepSpeed = this.getCurrentStepSpeed();
-    this.maxSpeed = this.currentStepSpeed;
-    this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
-
-    /* aceleración / deceleración */
-    if (this.speed < this.targetSpeed) {
-      this.speed = Math.min(
-        this.targetSpeed,
-        this.speed + this.acceleration * dt
-      );
-    } else if (this.speed > this.targetSpeed) {
-      this.speed = Math.max(
-        this.targetSpeed,
-        this.speed - this.acceleration * dt
-      );
-    }
-
-    /* -----------------------------------------
-       2.  Movimiento a lo largo de la ruta
-    ----------------------------------------- */
-    const next = this.route[0];
-    if (!next) return;
-
-    const curPt = turfPoint(this.position);
-    const nextPt = turfPoint(next);
-    const distToNxt = distance(curPt, nextPt, { units: "meters" });
-
-    const MIN_STEP = 0.05;
-    const stepLen = Math.max(this.speed * dt, MIN_STEP);
-
-    if (distToNxt === 0 && this.route.length > 1) {
-      this.route.shift();
-      return;
-    }
-
-    if (distToNxt <= stepLen) {
-      this.position = next;
-      this.route.shift();
-    } else {
-      const ang = bearing(curPt, nextPt);
-      const moved = destination(curPt, stepLen, ang, { units: "meters" });
-      this.position = moved.geometry.coordinates as [number, number];
-    }
-
-    /* suma distancia recorrida */
-    this.totalDistance += stepLen / 1000; // km
-
-    /* -----------------------------------------
-       3.  Suavizado de rotación
-    ----------------------------------------- */
-    const rawBearing = bearing(curPt, nextPt); // −180…+180
-    const targetRot = (rawBearing + 360) % 360; // 0…359
-    let delta = targetRot - this.lastRotation;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    this.lastRotation = (this.lastRotation + delta * 0.2 + 360) % 360;
-
-    this.marker.setRotation(this.lastRotation);
-
-    // /* -----------------------------------------
-    //    4.  Telemetría cada 50 m
-    // ----------------------------------------- */
-    // this.maybeLog(this, simTime);
-
-    // /* 4. telemetría (solo si el caller envía simTime>0) */
-    // if (simTime > 0) this.maybeLog(this, simTime);
-  }
-
-  reactToOtherCars(others: CarAgent[], rules: TrafficElement[]) {
-
-    // rules.filter(r => r.type === "roundabout").forEach(r =>
-    //   //console.log(`[RULE] ${r.id} centro=${r.location}  R=${r.radius}`)
-    // );
-
-
-    if (this.stopped) return;
-
-    let shouldSlow = false;
-
-    for (const other of others) {
-      if (other.id === this.id) continue;
-
-      // 🔁 Prioridad en entradas de rotondas
-      for (const rule of rules) {
-        if (rule.type !== "roundabout") continue;
-
-        if (this.isApproachingSameRoundaboutEntry(other, rule)) {
-          const iAmInside = this.insideRoundaboutIds.has(rule.id);
-          const otherIsInside = other.insideRoundaboutIds.has(rule.id);
-
-          if (iAmInside && !otherIsInside) {
-            continue; // tengo prioridad, no freno
-          }
-
-          if (!iAmInside && otherIsInside) {
-            // debo ceder
-            this.targetSpeed = 0;
-            shouldSlow = true;
-            break;
-          }
-        }
-      }
-
-      // Si ya se decidió frenar por rotonda, ignora el resto
-      if (shouldSlow) break;
-
-      // 🚗 Lógica de frenado por cercanía genérica
-      const sharedRoundabouts = [...this.insideRoundaboutIds].filter((id) =>
-        other.insideRoundaboutIds.has(id)
-      );
-      if (sharedRoundabouts.length === 0 && this.insideRoundaboutIds.size > 0) {
-        continue; // yo estoy dentro y el otro no => tengo prioridad
-      }
-
-      const dist = distance(
-        turfPoint(this.position),
-        turfPoint(other.position),
-        { units: "meters" }
-      );
-
-      if (dist < 8 && other.speed < 0.00005 && this.isInFront(other)) {
-        this.targetSpeed = 0;
-        shouldSlow = true;
-        break;
-      }
-
-      if (dist < 10 && this.isInFront(other)) {
-        this.targetSpeed = Math.min(this.targetSpeed, 1.5); // 1.5 m/s ≈ 5.4 km/h
-        shouldSlow = true;
-      } else if (dist < 20 && this.isInFront(other)) {
-        this.targetSpeed = Math.min(this.targetSpeed, 3.0); // 3.0 m/s ≈ 10.8 km/h
-        shouldSlow = true;
-      }
-    }
-
-    if (!shouldSlow) {
-      this.targetSpeed = this.maxSpeed;
-    }
-    this.targetSpeed = Math.min(this.targetSpeed, this.currentStepSpeed);
-  }
-}
+} 

@@ -188,6 +188,28 @@ const SimulatorApp: React.FC = () => {
     await baseHandleRoadClick(e);
   };
 
+  useEffect(() => {
+    if (mapInstance) {
+        const getCoordsOnClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+            const lng = e.lngLat.lng;
+            const lat = e.lngLat.lat;
+            console.log(`COORDS_CENTRO_MANUAL: [${lng}, ${lat}]`);
+            // Para facilitar copiar y pegar, puedes incluso hacer esto:
+            // console.log(`MANUAL_CENTER_LON: ${lng},`);
+            // console.log(`MANUAL_CENTER_LAT: ${lat},`);
+        };
+
+        mapInstance.on('click', getCoordsOnClick);
+        console.log("Listener de clic añadido al mapa para obtener coordenadas. Haz clic en el centro de la rotonda.");
+
+        // Es importante limpiar el listener cuando el componente se desmonte o mapInstance cambie
+        return () => {
+            mapInstance.off('click', getCoordsOnClick);
+            console.log("Listener de clic eliminado del mapa.");
+        };
+    }
+}, [mapInstance]); // Este useEffect se ejecutará cuando mapInstance esté disponible
+
 
 
   // atar listener para creación de coches secundarios

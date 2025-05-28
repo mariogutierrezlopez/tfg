@@ -66,8 +66,11 @@ const SearchForm: React.FC<Props> = ({
   const parseRulesFile = async (file: File) => {
     try {
       const text = await file.text();
+      console.log("JSON text loaded:", text);
       const parsed = JSON.parse(text);
+      console.log("Parsed JSON object:", parsed);
       setTree(parsed);
+      console.log("setTree called with parsed rules.");
       setRulesLoaded(true);
     } catch (err) {
       console.error("Error al parsear JSON de reglas:", err);
