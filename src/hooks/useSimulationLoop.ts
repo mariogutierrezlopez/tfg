@@ -1,5 +1,4 @@
 // src/hooks/useSimulationLoop.ts
-
 import { useEffect, useRef } from "react";
 import { CarAgent } from "../logic/agents/CarAgents";
 import { TrafficElement } from "../utils/types";
@@ -39,16 +38,12 @@ export function useSimulationLoop({
   const roundaboutCenterRef = useRef<Position | null>(null);
   const mapHasLoadedOnce = useRef(false);
 
-  useEffect(() => {
-    // console.log( // Log original de DEBUG EFFECT 1, puedes mantenerlo si quieres o simplificarlo
-    //   `DEBUG EFFECT 1: useEffect de initRoundaboutLanes EJECUTÁNDOSE. ` +
-    //   `Map disponible: ${!!map}, ` +
-    //   `trafficRules (longitud): ${trafficRules ? trafficRules.length : 'undefined/null'}, ` +
-    //   `mapHasLoadedOnce: ${mapHasLoadedOnce.current}`
-    // );
+  // NUEVA REFERENCIA PARA EL LOG DE ESTADO DE ROTONDA
+  const lastRoundaboutLogTime = useRef(0);
+  const LOG_INTERVAL_SECONDS = 1; // Log cada segundo simulado
 
+  useEffect(() => {
     if (!map) {
-      // console.log("DEBUG EFFECT 1: Mapa no disponible, retornando.");
       return;
     }
 
@@ -138,8 +133,6 @@ export function useSimulationLoop({
       }
     };
 
-    // ... (resto de la lógica del useEffect con mapHasLoadedOnce.current para llamar a initRoundaboutLanesInternal) ...
-    // Esta parte debería estar bien como la tenías en la última iteración.
     if (mapHasLoadedOnce.current) {
       console.log("DEBUG EFFECT 1: mapHasLoadedOnce es true. Llamando a initRoundaboutLanesInternal directamente.");
       initRoundaboutLanesInternal();
@@ -199,6 +192,9 @@ export function useSimulationLoop({
 
           if (agent.stopped) {
             agent.stopTimer -= FIXED_DT;
+            if (agent.id === "main-car") { // Solo loguear para el coche principal
+              console.log(`LOG_SIM_LOOP (${agent.id}): STOPPED - Timer: ${agent.stopTimer.toFixed(2)}s`);
+            }
             if (agent.stopTimer <= 0) {
               agent.stopped = false;
               agent.targetSpeed = agent.currentStepSpeed;
@@ -213,28 +209,13 @@ export function useSimulationLoop({
           const roundaboutRule = rulesRef.current.find(r => r.type === "roundabout");
 
 
-          // if (roundaboutRule && innerLaneLineRef.current && outerLaneLineRef.current) {
-          //   const distToCenter = turf.distance(agent.position, roundaboutRule.location, { units: 'meters' });
-
-          //   if (distToCenter < 40 && !agent.assignedLane && !agent.hasLaneBeenAssigned) {
-          //     // Log conciso si las condiciones para llamar se cumplen:
-          //     console.log(`LOG_SIM_LOOP (${agent.id}): *** Intenta LLAMAR a assignRoundaboutLane (dist: ${distToCenter.toFixed(1)}m) ***`);
-          //     agent.assignRoundaboutLane(
-          //       innerLaneLineRef.current.geometry.coordinates as [number, number][],
-          //       outerLaneLineRef.current.geometry.coordinates as [number, number][],
-          //       roundaboutRule
-          //     );
-          //   }
-          // }
-
           if (roundaboutRule && roundaboutRule.maneuverPoint && innerLaneLineRef.current && outerLaneLineRef.current) {
             const distToManeuverPoint = turf.distance(agent.position, roundaboutRule.maneuverPoint, { units: 'meters' });
 
             // Activamos la lógica de la rotonda cuando el coche se acerca al PUNTO DE ENTRADA real.
-            const MANEUVER_TRIGGER_RADIUS = 25; // Un radio de activación razonable en metros.
+            const MANEUVER_TRIGGER_RADIUS = 18; // Un radio de activación razonable en metros.
 
             if (!agent.hasConstantSpeed && distToManeuverPoint < MANEUVER_TRIGGER_RADIUS && !agent.assignedLane && !agent.hasLaneBeenAssigned) {
-            // --- FIN DE LA MODIFICACIÓN ---
               console.log(`LOG_SIM_LOOP (${agent.id}): *** Intenta LLAMAR a assignRoundaboutLane (dist a punto de maniobra: ${distToManeuverPoint.toFixed(1)}m) ***`);
               agent.assignRoundaboutLane(
                 innerLaneLineRef.current.geometry.coordinates as [number, number][],
@@ -255,6 +236,16 @@ export function useSimulationLoop({
 
         if (isPlayingRef.current) simTimeRef.current += FIXED_DT;
         accumulator.current -= FIXED_DT;
+
+        // MODIFICACIÓN: LOG DE ESTADO DE ROTONDA CADA SEGUNDO SIMULADO
+        if (isPlayingRef.current && simTimeRef.current - lastRoundaboutLogTime.current >= LOG_INTERVAL_SECONDS) {
+          const carsInRoundaboutStatus = agentsRef.current.map(agent =>
+            `${agent.id}: ${agent.isInsideRoundabout ? 'DENTRO' : 'FUERA'} (speed: ${agent.speed.toFixed(1)} m/s, targetSpeed: ${agent.targetSpeed.toFixed(1)} m/s)`
+          );
+          console.log(`SIM_TIME: ${simTimeRef.current.toFixed(0)}s | Estado rotonda: [${carsInRoundaboutStatus.join('; ')}]`);
+          lastRoundaboutLogTime.current = simTimeRef.current;
+        }
+
       }
 
       agentsRef.current.forEach((a) => a.draw(map));

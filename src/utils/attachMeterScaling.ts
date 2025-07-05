@@ -22,7 +22,8 @@ export const attachMeterScaling = (
   marker: mapboxgl.Marker,
   widthM  = 1.8,
   lengthM = 4.5,
-  minPx   = 32               // 👈 nuevo argumento
+  minPx   = 32,               // 👈 nuevo argumento
+  carId?: string              // 👈 nuevo argumento para identificar el coche
 ) => {
   const el = marker.getElement();
 
@@ -37,6 +38,15 @@ export const attachMeterScaling = (
     // ⬇️  Aplicamos el “clamp” mínimo
     el.style.width  = `${Math.max(widthM  * ppm, minPx)}px`;
     el.style.height = `${Math.max(lengthM * ppm, minPx)}px`;
+
+    // MODIFICACIÓN: Aplicar box-shadow escalado si es el coche principal
+    if (carId === "main-car") {
+      const shadowSpreadM = 0.2; // Espesor de la sombra en metros (ajustar si es necesario)
+      const shadowSpreadPx = Math.max(shadowSpreadM * ppm, 1); // Calcular en píxeles, con un mínimo de 1px
+      el.style.boxShadow = `0 0 0 ${shadowSpreadPx}px red`;
+    } else {
+      el.style.boxShadow = "none"; // Asegurarse de que otros coches no tengan sombra
+    }
   };
 
   update();

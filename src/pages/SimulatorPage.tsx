@@ -184,7 +184,8 @@ const SimulatorApp: React.FC = () => {
           secondaryOrigin,
           coord,
           profile.speed,
-          `sec-${selectedProfileId}-${Date.now()}`
+          `sec-${selectedProfileId}-${Date.now()}`,
+          trafficRules
         );
 
         // limpiamos estado de selección (los refs ya se limpiarán tras 5 s)

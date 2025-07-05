@@ -22,11 +22,11 @@ export async function getTrafficRules(
   const rules: TrafficElement[] = [];
 
   // ----- BEGIN CONFIGURACIÓN MANUAL PARA TU ROTONDA ESPECÍFICA -----
-  const TARGET_ROUNDABOUT_MANEUVER_LON = -3.831046;
-  const TARGET_ROUNDABOUT_MANEUVER_LAT = 40.405991;
-  const MANUAL_CENTER_LON = -3.830656186425358;
-  const MANUAL_CENTER_LAT = 40.406007761172845;
-  const MANUAL_RADIUS_METERS = 32;
+  const TARGET_ROUNDABOUT_MANEUVER_LON = -3.836740745191605; // NUEVA Longitud de la entrada a la rotonda (ajustada)
+  const TARGET_ROUNDABOUT_MANEUVER_LAT = 40.423808446010696; // NUEVA Latitud de la entrada a la rotonda (ajustada)
+  const MANUAL_CENTER_LON = -3.836891092149699; // NUEVA Longitud central de la rotonda
+  const MANUAL_CENTER_LAT = 40.42362622046832; // NUEVA Latitud central de la rotonda
+  const MANUAL_RADIUS_METERS = 25;
   // ----- FIN CONFIGURACIÓN MANUAL -----
 
   steps.forEach((step: any, i: any) => {
@@ -37,7 +37,7 @@ export async function getTrafficRules(
 
     if (type === "roundabout" || type === "rotary" || type === "roundabout turn") {
       const roundaboutPathCoords = step.geometry?.coordinates as [number, number][] | undefined;
-      
+
       let actualCenter: [number, number];
       let estimatedRadius: number;
 

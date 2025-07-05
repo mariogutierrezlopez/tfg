@@ -1,0 +1,23 @@
+{
+  "condition": {
+    "feature": "Cz",
+    "operator": ">",
+    "value": 0.5
+  },
+  "true": {
+    "action": "STOP"
+  },
+  "false": {
+    "condition": {
+      "feature": "RL",
+      "operator": ">",
+      "value": 0.5
+    },
+    "true": {
+      "action": "STOP"
+    },
+    "false": {
+      "action": "GO_AHEAD"
+    }
+  }
+}

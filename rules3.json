@@ -1,30 +1,30 @@
 {
   "condition": {
-    "feature": "Speed-V RND",
+    "feature": "speedVRnd",
     "operator": ">",
     "value": 7.5
   },
   "true": {
     "condition": {
-      "feature": "Dist-Y",
+      "feature": "distY",
       "operator": ">",
       "value": 0.5
     },
     "true": {
       "condition": {
-        "feature": "Speed-V RND",
+        "feature": "speedVRnd",
         "operator": ">",
         "value": 33.5
       },
       "true": {
         "condition": {
-          "feature": "Speed-L",
+          "feature": "speedL",
           "operator": ">",
           "value": 35
         },
         "true": {
           "condition": {
-            "feature": "Speed-V RND",
+            "feature": "speedVRnd",
             "operator": ">",
             "value": 72.5
           },
@@ -33,7 +33,7 @@
           },
           "false": {
             "condition": {
-              "feature": "Speed-V RND",
+              "feature": "speedVRnd",
               "operator": ">",
               "value": 58.5
             },
@@ -45,7 +45,7 @@
               },
               "true": {
                 "condition": {
-                  "feature": "Speed-V RND",
+                  "feature": "speedVRnd",
                   "operator": ">",
                   "value": 64
                 },
@@ -58,13 +58,13 @@
               },
               "false": {
                 "condition": {
-                  "feature": "Dist-Y",
+                  "feature": "distY",
                   "operator": ">",
                   "value": 165
                 },
                 "true": {
                   "condition": {
-                    "feature": "Dist-Y",
+                    "feature": "distY",
                     "operator": ">",
                     "value": 255
                   },
@@ -82,7 +82,7 @@
             },
             "false": {
               "condition": {
-                "feature": "Speed-V RND",
+                "feature": "speedVRnd",
                 "operator": ">",
                 "value": 56.5
               },
@@ -91,7 +91,7 @@
               },
               "false": {
                 "condition": {
-                  "feature": "Speed-V RND",
+                  "feature": "speedVRnd",
                   "operator": ">",
                   "value": 34.5
                 },
@@ -111,7 +111,7 @@
       },
       "false": {
         "condition": {
-          "feature": "Dist-Y",
+          "feature": "distY",
           "operator": ">",
           "value": 49
         },
@@ -135,7 +135,7 @@
             },
             "true": {
               "condition": {
-                "feature": "Dist-Y",
+                "feature": "distY",
                 "operator": ">",
                 "value": 3.5
               },
@@ -148,13 +148,13 @@
             },
             "false": {
               "condition": {
-                "feature": "Speed-V RND",
+                "feature": "speedVRnd",
                 "operator": ">",
                 "value": 16.5
               },
               "true": {
                 "condition": {
-                  "feature": "Speed-V RND",
+                  "feature": "speedVRnd",
                   "operator": ">",
                   "value": 20.5
                 },
@@ -163,7 +163,7 @@
                 },
                 "false": {
                   "condition": {
-                    "feature": "Speed-L",
+                    "feature": "speedL",
                     "operator": ">",
                     "value": 45
                   },
