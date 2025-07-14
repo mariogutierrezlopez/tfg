@@ -28,12 +28,12 @@ export const useManualPointSelection = (
 
       if (clicks.length === 1) {
         setOriginCoords(lngLat);
-        console.log("🟢 Origen asignado:", lngLat);
+        console.log("Origen asignado:", lngLat);
       }
 
       if (clicks.length === 2) {
         setDestinationCoords(lngLat);
-        console.log("🟢 Destino asignado:", lngLat);
+        console.log("Destino asignado:", lngLat);
 
         setTimeout(() => {
           onComplete();
@@ -48,7 +48,7 @@ export const useManualPointSelection = (
     return () => {
       mapInstance.off("click", handleClick);
       markers.forEach((m) => m.remove());
-      console.log("🔴 Marcadores eliminados al salir del modo manual");
+      console.log("Marcadores eliminados al salir del modo manual");
     };
   }, [mapInstance, inputMode]);
 };

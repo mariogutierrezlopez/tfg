@@ -109,11 +109,9 @@ export class CarAgent extends TrafficAgent {
 
     // Simplemente usamos la geometría de la maniobra de la API como la nueva ruta.
     this.route = [...currentRoundaboutRule.geometry];
-    this.hasLaneBeenAssigned = true; // Marcamos que ya hemos procesado la entrada.
+    this.hasLaneBeenAssigned = true;
   }
 
-  // La función updatePosition que te di en el mensaje anterior (con el decremento de roundaboutManeuverPathLength)
-  // debería seguir funcionando bien con este cambio. Revisa que la tengas así:
   public updatePosition(dt: number) {
     if (this.stopped) {
       this.speed = 0;
@@ -186,9 +184,6 @@ export class CarAgent extends TrafficAgent {
     );
   }
 
-  // REEMPLAZAR LA FUNCIÓN reactToTrafficRules ENTERA POR ESTA NUEVA VERSIÓN
-
-  // REEMPLAZAR LA FUNCIÓN reactToTrafficRules ENTERA POR ESTA NUEVA VERSIÓN
 
   public reactToTrafficRules(rules: TrafficElement[], others: CarAgent[]) {
     const relevantRoundabout = rules.find(r => r.type === "roundabout");
@@ -200,9 +195,8 @@ export class CarAgent extends TrafficAgent {
     }
 
     const distToCenter = turfDistance(this.position, relevantRoundabout.location, { units: 'meters' });
-
-    // --- ¡NUEVA LÓGICA DE DETECCIÓN POR UMBRALES! ---
-    const entryThreshold = relevantRoundabout.radius + 2;  // Umbral ajustado para entrar (muy cerca)
+-
+    const entryThreshold = relevantRoundabout.radius + 2;  // Umbral ajustado para entrar
     const exitThreshold = relevantRoundabout.radius + 25; // Umbral más amplio para salir
 
     const wasInside = this.isInsideRoundabout;
@@ -215,7 +209,6 @@ export class CarAgent extends TrafficAgent {
     else if (wasInside && distToCenter > exitThreshold) {
       this.isInsideRoundabout = false;
     }
-    // Si está entre los dos umbrales, su estado no cambia, evitando el "tartamudeo".
 
     if (wasInside !== this.isInsideRoundabout) {
       console.log(`LOG_AGENT (${this.id}): STATE_UPDATE - isInsideRoundabout cambió de ${wasInside} a ${this.isInsideRoundabout} (Dist: ${distToCenter.toFixed(1)}m)`);
@@ -267,7 +260,6 @@ export class CarAgent extends TrafficAgent {
     }
 
     // Restablece la velocidad objetivo a la calculada por las reglas de tráfico.
-    // Esto es importante para que pueda acelerar si el coche de delante se va.
     this.targetSpeed = this.isInsideRoundabout ? ENTRY_LIMIT : this.getCurrentStepSpeed();
 
     for (const other of others) {
@@ -296,7 +288,7 @@ export class CarAgent extends TrafficAgent {
       !Array.isArray(this.position) || this.position.length !== 2 || isNaN(this.position[0]) || isNaN(this.position[1]) ||
       !Array.isArray(rule.location) || rule.location.length !== 2 || isNaN(rule.location[0]) || isNaN(rule.location[1]) ||
       (this.position[0] === next[0] && this.position[1] === next[1])) {
-      console.warn("⚠️ Segmento inválido en hasPassedRule, se omite.");
+      console.warn("Segmento inválido en hasPassedRule, se omite.");
       return false;
     }
 

@@ -27,14 +27,12 @@ export async function fetchRouteWithSpeeds(
     .map(c => Array.isArray(c) ? c.join(",") : `${c.lng},${c.lat}`)
     .join(";");
 
-  /* 1️⃣  Intento con tráfico --------------------------------- */
   let data, route;
   try {
     data = await requestRoute("mapbox/driving-traffic", coordStr);
     route = data.routes?.[0];
   } catch { /* ignoramos – pasamos al plan B */ }
 
-  /* 2️⃣  Fallback a profile "driving" si hace falta ----------- */
   if (!route) {
     data  = await requestRoute("mapbox/driving", coordStr);
     route = data.routes?.[0];
@@ -53,7 +51,7 @@ export async function fetchRouteWithSpeeds(
       return m.unit === "mph" ? v*0.44704 : v/3.6;
     }
     if (typeof speed[i] === "number") return Math.min(speed[i]*1.1, 35);
-    return 30/3.6;                 // último recurso
+    return 30/3.6;
   });
 
   return { geometry, stepSpeeds };

@@ -4,7 +4,6 @@ import type mapboxgl from "mapbox-gl";
 
 type MapEvt = mapboxgl.MapMouseEvent & mapboxgl.EventData;
 
-/** capas sobre las que queremos actuar */
 const TARGET_LAYERS = ["roads-clickable-layer", "route-clickable-layer"];
 
 export function useRoadClickBinding(
@@ -13,7 +12,6 @@ export function useRoadClickBinding(
   deps: any[] = [],
   mode: "full" | "area" | "manual-secondary" | null = null
 ) {
-  /* ref estable para la callback */
   const cbRef = useRef<(e: MapEvt) => void>(() => { });
   cbRef.current = onClick ?? (() => { });
 

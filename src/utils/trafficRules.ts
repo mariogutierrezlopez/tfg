@@ -21,11 +21,10 @@ export async function getTrafficRules(
   const steps = data.routes?.[0]?.legs?.[0]?.steps ?? [];
   const rules: TrafficElement[] = [];
 
-  // ----- BEGIN CONFIGURACIÓN MANUAL PARA TU ROTONDA ESPECÍFICA -----
-  const TARGET_ROUNDABOUT_MANEUVER_LON = -3.836740745191605; // NUEVA Longitud de la entrada a la rotonda (ajustada)
-  const TARGET_ROUNDABOUT_MANEUVER_LAT = 40.423808446010696; // NUEVA Latitud de la entrada a la rotonda (ajustada)
-  const MANUAL_CENTER_LON = -3.836891092149699; // NUEVA Longitud central de la rotonda
-  const MANUAL_CENTER_LAT = 40.42362622046832; // NUEVA Latitud central de la rotonda
+  const TARGET_ROUNDABOUT_MANEUVER_LON = -3.836740745191605; //Longitud de la entrada a la rotonda
+  const TARGET_ROUNDABOUT_MANEUVER_LAT = 40.423808446010696; //Latitud de la entrada a la rotonda
+  const MANUAL_CENTER_LON = -3.836891092149699; //Longitud central de la rotonda
+  const MANUAL_CENTER_LAT = 40.42362622046832; //Latitud central de la rotonda
   const MANUAL_RADIUS_METERS = 25;
   // ----- FIN CONFIGURACIÓN MANUAL -----
 

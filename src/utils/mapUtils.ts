@@ -11,12 +11,11 @@ export function drawCarRoute(
   const line = `${carId}-route`;
   const pin  = `${carId}-dest`;
 
-  /* limpia anterior */
+
   if (map.getLayer(line)) map.removeLayer(line);
   if (map.getLayer(pin))  map.removeLayer(pin);
   if (map.getSource(src)) map.removeSource(src);
 
-  /* GeoJSON combinado */
   map.addSource(src, {
     type: "geojson",
     data: {
@@ -24,12 +23,12 @@ export function drawCarRoute(
       features: [
         {
           type: "Feature",
-          properties: {},                     // ← añadido
+          properties: {},
           geometry: { type: "LineString", coordinates: coords }
         },
         {
           type: "Feature",
-          properties: {},                     // ← añadido
+          properties: {},
           geometry: { type: "Point", coordinates: coords.at(-1)! }
         }
       ]

@@ -16,7 +16,7 @@ export const drawRoundaboutEntryZone = (
   };
 
   const radiusMeters = roundabout.radius + 15;
-  if (map.getLayer(id)) return;        // no la añadas de nuevo
+  if (map.getLayer(id)) return;
   if (!map.getSource(id)) {
     map.addSource(id, {
       type: "geojson",
@@ -47,7 +47,7 @@ export const drawRoundaboutEntryZone = (
       type: "symbol",
       source: id,
       layout: {
-        "icon-image": "roundabout-sign", // asegúrate que este icono esté cargado previamente
+        "icon-image": "roundabout-sign",
         "icon-size": 0.1,
         "icon-allow-overlap": true,
       },

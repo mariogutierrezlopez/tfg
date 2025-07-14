@@ -16,18 +16,18 @@ export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
     
     return [
       c.id, "car", c.carType.id,
-      c.initialPosition[0],                 // CAMBIADO: Usa la posición inicial
-      c.initialPosition[1],                 // CAMBIADO: Usa la posición inicial
+      c.initialPosition[0],
+      c.initialPosition[1],
       c.speed, c.maxSpeed, c.targetSpeed,
-      csvSafe(JSON.stringify(fullOriginalRoute)), // CAMBIADO: Usa la ruta original completa
+      csvSafe(JSON.stringify(fullOriginalRoute)),
       csvSafe(JSON.stringify(c.stepSpeeds)),
-      "", "", "", ""                           // Relleno de columnas de reglas
+      "", "", "", ""
     ];
   });
 
   const ruleRows = rules.map(r => [
     r.id, "rule", "",
-    "", "", "", "", "",                     // Columnas de coche vacías
+    "", "", "", "", "",
     "", "",
     r.type,
     csvSafe(JSON.stringify(r.location)),
@@ -123,8 +123,6 @@ export function importScenarioFromCsv(
         if (r.type === "roundabout"){
           drawRoundaboutEntryZone(map, r, `${r.id}-zone`);
         }
-        // Ejemplo: para “yield” podrías dibujar un icono o círculo:
-        // else if (r.type === "yield"){ … }
       });
 
       /* centra el mapa */

@@ -62,13 +62,13 @@ export const useRouteCalculation = ({
       }
 
       try {
-        /* 1️⃣ obtén ruta + speeds + reglas con helper central */
+        /* obtén ruta + speeds + reglas con helper central */
         const res = await fetchRouteFrom(origin, destination, token);
         if (!res) { setRouteStatus("error"); return null; }
 
         const { routeData, trafficRules } = res;
 
-        /* 2️⃣ estado global de reglas (merge para no perder las previas) */
+        /* estado global de reglas (merge para no perder las previas) */
         setTrafficRules(prev => {
           const merged = mergeTrafficRules(prev, trafficRules);
           const map = mapRef.current;
@@ -83,13 +83,13 @@ export const useRouteCalculation = ({
           return merged;
         });
 
-        /* 3️⃣ guarda toda la ruta (incluye stepSpeeds) */
+        /* guarda toda la ruta (incluye stepSpeeds) */
         setRouteData(routeData);
 
-        /* 4️⃣ pinta la polilínea */
+        /* pinta la polilínea */
         const map = mapRef.current;
         if (map) {
-          /* elimina en orden: capas → source */
+          /* elimina en orden: capas -> source */
           if (map.getLayer("route-clickable-layer"))
             map.removeLayer("route-clickable-layer");
           if (map.getLayer("route"))

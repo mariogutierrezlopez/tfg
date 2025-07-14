@@ -18,21 +18,18 @@ export async function fetchRouteFrom(
   trafficRules: TrafficElement[],
 } | null> {
 
-  /* 1️⃣  línea + límites de velocidad --------------------------------- */
   const { geometry, stepSpeeds } =
     await fetchRouteWithSpeeds([origin, destination]);
 
   if (!geometry || geometry.length < 2) return null;
 
   const rawCoords  = geometry;                 // ← SIN resamplear
-  const drawCoords = resampleRoute(geometry, 3); // opcional (sólo dibujo)
+  const drawCoords = resampleRoute(geometry, 3);
 
-  /* 2️⃣  reglas de tráfico -------------------------------------------- */
   const trafficRules = await getTrafficRules(
     origin, destination, geometry, token
-  );                                           // debe devolver TrafficElement[]
+  );
 
-  /* 3️⃣  empaquetar ---------------------------------------------------- */
   return {
     routeData : { coordinates: rawCoords, drawCoords, stepSpeeds },
     trafficRules,

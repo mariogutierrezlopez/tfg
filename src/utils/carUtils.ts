@@ -10,9 +10,8 @@ import { vehicleSizes } from "./types";
 import { fetchRouteWithSpeeds } from "../utils/mapboxDirections";
 import { resampleRoute } from "./resampleRoute";
 import { TreeNode } from "../utils/decisionTree";
-import { point as turfPoint } from "@turf/helpers"; // <--- Añade esta importación
-import distance from "@turf/distance";             // <--- Añade esta importación
-
+import { point as turfPoint } from "@turf/helpers";
+import distance from "@turf/distance";
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
@@ -64,7 +63,7 @@ export async function spawnCar(
   origin: [number, number],
   destination: [number, number],
   carType: CarOption,
-  carId: string,                       // "main-car", randomId…
+  carId: string,
   onClickMarker: () => void,
   decisionTree: TreeNode | null
 ) {
@@ -108,12 +107,12 @@ export async function spawnCar(
   const agent = new CarAgent(
     carId,
     geometry[0],
-    geometry.slice(1),       // resto ruta
+    geometry.slice(1),
     marker,
     carType,
     stepSpeeds,
     decisionTree,
-    false // <-- MODIFICACIÓN: Los coches principales NO tienen velocidad constante
+    false //Los coches principales NO tienen velocidad constante
   );
   (agent as any).detachZoom = detach;
 
@@ -158,7 +157,7 @@ export async function spawnSecondaryCar(
   destination: [number, number],
   speedKmh: number,
   carId: string,
-  trafficRules: TrafficElement[] // <--- ¡NUEVO PARÁMETRO!
+  trafficRules: TrafficElement[]
 ) {
   // 1) obtenemos la geometría
   const { geometry } = await fetchRouteWithSpeeds([origin, destination]);
@@ -200,7 +199,6 @@ export async function spawnSecondaryCar(
     .setLngLat(origin)
     .addTo(map);
 
-  // MODIFICACIÓN: Pasar carId a attachMeterScaling
   const detach = attachMeterScaling(map, marker, wM, lM, 32, carId);
 
   // 4) agente que se moverá con velocidad constante
@@ -215,7 +213,7 @@ export async function spawnSecondaryCar(
     { id: "secondary", name: "sec", image: carIcon },
     stepSpeeds,
     null,
-    true // <-- MODIFICACIÓN: Los coches secundarios SÍ tienen velocidad constante
+    true // Los coches secundarios SÍ tienen velocidad constante
   );
   (agent as any).detachZoom = detach;
 

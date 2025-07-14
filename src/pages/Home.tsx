@@ -17,7 +17,6 @@ const Home: React.FC = () => {
   const slider = useFadeIn();
 
   //Declaración de los hooks para las funcionalidades
-  // En react no se puede usar un array de hooks, por lo que se declaran uno a uno
   const fade1 = useFadeIn();
   const fade2 = useFadeIn();
   const fade3 = useFadeIn();

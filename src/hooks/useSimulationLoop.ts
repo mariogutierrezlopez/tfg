@@ -38,7 +38,6 @@ export function useSimulationLoop({
   const roundaboutCenterRef = useRef<Position | null>(null);
   const mapHasLoadedOnce = useRef(false);
 
-  // NUEVA REFERENCIA PARA EL LOG DE ESTADO DE ROTONDA
   const lastRoundaboutLogTime = useRef(0);
   const LOG_INTERVAL_SECONDS = 1; // Log cada segundo simulado
 
@@ -55,7 +54,7 @@ export function useSimulationLoop({
         console.warn("DEBUG INIT: No se encontró roundaboutRule para crear carriles.");
         innerLaneLineRef.current = null;
         outerLaneLineRef.current = null;
-        roundaboutCenterRef.current = null; // También limpiar el centro si no hay regla
+        roundaboutCenterRef.current = null;
         if (map && map.isStyleLoaded()) {
           if (map.getLayer('inner-lane-layer')) map.removeLayer('inner-lane-layer');
           if (map.getSource('inner-lane')) map.removeSource('inner-lane');
@@ -111,7 +110,6 @@ export function useSimulationLoop({
       outerLaneLineRef.current = outerLane;
 
       console.log("DEBUG INIT: Geometrías de carril asignadas. innerLane:", !!innerLaneLineRef.current, "outerLane:", !!outerLaneLineRef.current);
-      // ... (resto de la lógica de dibujar los carriles de depuración, sin cambios) ...
       if (map.isStyleLoaded()) {
         console.log("DEBUG INIT DRAW: map.isStyleLoaded() es TRUE. Intentando dibujar/actualizar carriles de depuración.");
         try {
@@ -237,7 +235,7 @@ export function useSimulationLoop({
         if (isPlayingRef.current) simTimeRef.current += FIXED_DT;
         accumulator.current -= FIXED_DT;
 
-        // MODIFICACIÓN: LOG DE ESTADO DE ROTONDA CADA SEGUNDO SIMULADO
+        //LOG DE ESTADO DE ROTONDA CADA SEGUNDO SIMULADO
         if (isPlayingRef.current && simTimeRef.current - lastRoundaboutLogTime.current >= LOG_INTERVAL_SECONDS) {
           const carsInRoundaboutStatus = agentsRef.current.map(agent =>
             `${agent.id}: ${agent.isInsideRoundabout ? 'DENTRO' : 'FUERA'} (speed: ${agent.speed.toFixed(1)} m/s, targetSpeed: ${agent.targetSpeed.toFixed(1)} m/s)`

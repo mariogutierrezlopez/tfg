@@ -8,7 +8,7 @@ html, body, #root {
 .simulator-layout {
   display: flex;
   width: 100vw;
-  height: 100vh;   /* viewport height */
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -19,9 +19,9 @@ html, body, #root {
 
 .stats-pane {
   flex: 0 0 40%;
-  position: relative;       /* para poder elevarlo */
-  z-index: 10;              /* por encima del mapa */
-  background-color: #fff;   /* fondo sólido */
+  position: relative;
+  z-index: 10;/
+  background-color: #fff;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -33,11 +33,6 @@ html, body, #root {
   position: absolute;
   top: 0; bottom: 0; left: 0; right: 0;
 }
-
-/* ===============================
-   EXPORT & TELEMETRÍA BUTTONS
-   (igual que .control-button/.control-icon)
-   =============================== */
 
 .export-btn {
   width: 56px;

@@ -38,7 +38,6 @@ export const useCarManager = (
 
   const handleRoadClick = useCallback(
     async (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
-      // ① Cambio de ruta pendiente
       if (carPendingRouteChange) {
         const coord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
         const car = agentsRef.current.find(a => a.id === carPendingRouteChange);
@@ -63,7 +62,7 @@ export const useCarManager = (
         return;
       }
 
-      // ② Clic sobre un coche existente: seleccionarlo
+      // Clic sobre un coche existente: seleccionarlo
       const clicked = agentsRef.current.find(a => {
         const r = a.marker.getElement().getBoundingClientRect();
         return e.originalEvent.clientX >= r.left &&
@@ -75,7 +74,6 @@ export const useCarManager = (
         setSelectedCarId(clicked.id);
       }
 
-      // ⚠️ No hay creación automática de coches aquí
     },
     [
       carPendingRouteChange,

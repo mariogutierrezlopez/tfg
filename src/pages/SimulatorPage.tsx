@@ -69,7 +69,7 @@ const SimulatorApp: React.FC = () => {
   //Modal para exportar telemetría
   const [showModal, setShowModal] = useState(false);
 
-  // Nuevo estado para el panel de secundarios
+  // estado para el panel de secundarios
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
@@ -135,7 +135,6 @@ const SimulatorApp: React.FC = () => {
   const secondaryOriginMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const secondaryDestinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  // En tu SimulationPage.tsx
 
   const handleRoadClick = async (
     e: mapboxgl.MapMouseEvent & mapboxgl.EventData
@@ -188,7 +187,7 @@ const SimulatorApp: React.FC = () => {
           trafficRules
         );
 
-        // limpiamos estado de selección (los refs ya se limpiarán tras 5 s)
+        // limpiar estado de selección (los refs ya se limpiarán tras 5 s)
         setSecondaryOrigin(null);
         setSecondaryDestination(null);
         setSelectedProfileId(null);
@@ -196,7 +195,7 @@ const SimulatorApp: React.FC = () => {
       }
     }
 
-    // en modo normal delegamos a coche principal si procede
+    // en modo normal delegar a coche principal si procede
     await baseHandleRoadClick(e);
   };
 
@@ -206,21 +205,17 @@ const SimulatorApp: React.FC = () => {
             const lng = e.lngLat.lng;
             const lat = e.lngLat.lat;
             console.log(`COORDS_CENTRO_MANUAL: [${lng}, ${lat}]`);
-            // Para facilitar copiar y pegar, puedes incluso hacer esto:
-            // console.log(`MANUAL_CENTER_LON: ${lng},`);
-            // console.log(`MANUAL_CENTER_LAT: ${lat},`);
         };
 
         mapInstance.on('click', getCoordsOnClick);
         console.log("Listener de clic añadido al mapa para obtener coordenadas. Haz clic en el centro de la rotonda.");
 
-        // Es importante limpiar el listener cuando el componente se desmonte o mapInstance cambie
         return () => {
             mapInstance.off('click', getCoordsOnClick);
             console.log("Listener de clic eliminado del mapa.");
         };
     }
-}, [mapInstance]); // Este useEffect se ejecutará cuando mapInstance esté disponible
+}, [mapInstance]);
 
 
 
@@ -243,7 +238,7 @@ const SimulatorApp: React.FC = () => {
     "search"
   );
 
-  // binding para el coche principal: usa baseHandleRoadClick en lugar de handleRoadClick
+  // binding para el coche principal
   useRoadClickBinding(
     mapInstance,
     baseHandleRoadClick,
@@ -268,27 +263,6 @@ const SimulatorApp: React.FC = () => {
   const { onMapReady } = useMapInitialization(setMapInstance, mapRef);
 
 
-  // const deleteCar = (carId: string) => {
-  //   const car = agentsRef.current.find(c => c.id === carId);
-  //   if (!car) return;
-
-  //   /* 1 — Quitar marcador */
-  //   car.marker.remove();
-  //   agentsRef.current = agentsRef.current.filter(c => c.id !== carId);
-
-  //   /* 2 — Eliminar capa y fuente de la ruta, si existen */
-  //   const map = mapRef.current;
-  //   if (map) {
-  //     const layerId = `${carId}-route`;
-  //     const sourceId = `${carId}-route`;
-
-  //     if (map.getLayer(layerId)) map.removeLayer(layerId);
-  //     if (map.getSource(sourceId)) map.removeSource(sourceId);
-  //   }
-
-  //   /* 3 — Cerrar panel si era el seleccionado */
-  //   if (selectedCarId === carId) setSelectedCarId(null);
-  // };
 
 
   return (

@@ -14,9 +14,4 @@ export interface TelemetryRow {
 // Raw acumula todo lo que registre maybeLog
 export const rawTelemetry: Record<string, TelemetryRow[]> = {};
 
-// // utils/telemetryStore.ts
-// export const telemetry: Record<string, TelemetryRow[]> = {};
-// export const lastKm: Record<string, number> = {};
-// export const lastTimeSec: Record<string, number> = {};
-
   
