@@ -3,25 +3,29 @@ import { carOptions } from "../constants/carOptions";
 import Papa from "papaparse";
 import mapboxgl from "mapbox-gl";
 import { TrafficElement } from "./types";
+import { TreeNode } from "./decisionTree";
 import { drawRoundaboutEntryZone } from "./mapSetup";
+import { rawTelemetry, TelemetryRow } from './telemetryStore';
+
+// --- SECCIÓN DE IMPORTACIÓN Y EXPORTACIÓN DE ESCENARIOS ---
 
 const csvSafe = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
 export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
-
   const carRows = cars.map(c => {
-    // Para la ruta, nos aseguramos de que el punto inicial está incluido,
-    // ya que la propiedad `originalRoute` del agente almacena el resto del camino.
     const fullOriginalRoute = [c.initialPosition, ...c.originalRoute];
     
     return [
       c.id, "car", c.carType.id,
       c.initialPosition[0],
       c.initialPosition[1],
-      c.speed, c.maxSpeed, c.targetSpeed,
+      0,
+      c.maxSpeed,
+      c.targetSpeed,
       csvSafe(JSON.stringify(fullOriginalRoute)),
       csvSafe(JSON.stringify(c.stepSpeeds)),
-      "", "", "", ""
+      "", "", "", "",
+      c.creationTime
     ];
   });
 
@@ -32,18 +36,20 @@ export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
     r.type,
     csvSafe(JSON.stringify(r.location)),
     r.radius ?? "",
-    r.priorityRule ?? ""
+    r.priorityRule ?? "",
+    ""
   ]);
 
   const header = [
     "id","type","subtype","longitude","latitude","speed","maxSpeed",
     "targetSpeed","route","stepSpeeds",
-    "ruleType","loc","radius","priority"
+    "ruleType","loc","radius","priority",
+    "creationTime"
   ];
 
   const csv = [header, ...carRows, ...ruleRows].map(r => r.join(",")).join("\n");
   const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-  const a    = document.createElement("a");
+  const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "scenario.csv";
   document.body.appendChild(a);
@@ -51,39 +57,36 @@ export function exportScenarioToCsv(cars: CarAgent[], rules: TrafficElement[]) {
   a.remove();
 }
 
+
 export function importScenarioFromCsv(
   file      : File,
   map       : mapboxgl.Map,
-  callback  : (cars: CarAgent[], rules: TrafficElement[]) => void
+  callback  : (cars: CarAgent[], rules: TrafficElement[]) => void,
+  decisionTree: TreeNode | null
 ){
   Papa.parse(file, {
     header        : true,
     skipEmptyLines: true,
 
     complete: (res) => {
-      const cars : CarAgent[]      = [];
+      const cars : CarAgent[] = [];
       const rules: TrafficElement[] = [];
 
       (res.data as any[]).forEach(row => {
-        /* ---------- FILAS DE COCHES ---------- */
         if (row.type === "car"){
           const carType = carOptions.find(c => c.id === row.subtype || row.type);
           if (!carType) { console.warn("Tipo coche desconocido", row.subtype); return; }
 
-          /* icono */
           const el = document.createElement("div");
-          el.style.cssText = `
-            width:32px;height:32px;background:url(${carType.image}) center/contain no-repeat;
-          `;
+          el.style.cssText = `width:32px;height:32px;background:url(${carType.image}) center/contain no-repeat;`;
 
           const marker = new mapboxgl.Marker(el)
             .setLngLat([ +row.longitude, +row.latitude ])
             .addTo(map);
 
-          /* ruta + speeds */
-          let route: [number,number][]  = [];
+          let route: [number,number][] = [];
           let speeds: number[] = [];
-          try{ route  = row.route      ? JSON.parse(row.route)      : []; }catch{}
+          try{ route = row.route ? JSON.parse(row.route) : []; }catch{}
           try{ speeds = row.stepSpeeds ? JSON.parse(row.stepSpeeds) : []; }catch{}
 
           const agent = new CarAgent(
@@ -92,16 +95,16 @@ export function importScenarioFromCsv(
             route,
             marker,
             carType,
-            speeds
+            speeds,
+            decisionTree,
+            false,
+            +row.creationTime || 0
           );
-          agent.speed        = +row.speed  || 0;
-          agent.maxSpeed     = +row.maxSpeed || agent.maxSpeed;
-          agent.targetSpeed  = +row.targetSpeed || agent.targetSpeed;
 
+          
           cars.push(agent);
         }
 
-        /* ---------- FILAS DE REGLAS ---------- */
         if (row.type === "rule"){
           try{
             const loc: [number,number] = JSON.parse(row.loc);
@@ -118,22 +121,20 @@ export function importScenarioFromCsv(
         }
       });
 
-      /* Dibuja las reglas cargadas ---------------------------------- */
       rules.forEach(r => {
         if (r.type === "roundabout"){
           drawRoundaboutEntryZone(map, r, `${r.id}-zone`);
         }
       });
 
-      /* centra el mapa */
       if (cars.length) map.flyTo({ center: cars[0].position, zoom:17 });
 
       callback(cars, rules);
     }
   });
 }
-// utils/csvUtils.ts
-import { rawTelemetry, TelemetryRow } from './telemetryStore';
+
+// --- SECCIÓN DE EXPORTACIÓN DE TELEMETRÍA (INTACTA) ---
 
 export type Criterion = 'meters' | 'seconds';
 
@@ -152,13 +153,11 @@ export function exportTelemetryToCsv() {
   const header =
     "carId,timestampUTC,lat,lng,speedKmh,directionDeg,distanceKm,simTimeSec\n";
 
-  // Para cada coche, filtramos sus rawTelemetry según el criterio:
   const filteredRows: TelemetryRow[] = [];
 
   for (const [carId, rows] of Object.entries(rawTelemetry)) {
     if (rows.length === 0) continue;
 
-    // orden por simTime (o distance) ascendente
     const sorted = [...rows].sort((a, b) =>
       (criterion === 'meters' ? a.distance - b.distance : a.simTime - b.simTime)
     );
@@ -173,7 +172,6 @@ export function exportTelemetryToCsv() {
         }
       }
     } else {
-      // segundos
       let nextThreshold = interval;
       for (const r of sorted) {
         if (r.simTime >= nextThreshold) {
@@ -184,10 +182,8 @@ export function exportTelemetryToCsv() {
     }
   }
 
-  // orden final por timestamp para mezclar todos los coches
   filteredRows.sort((a, b) => a.ts - b.ts);
 
-  // construir CSV
   const csv = header +
     filteredRows
       .map(r =>
@@ -204,9 +200,8 @@ export function exportTelemetryToCsv() {
       )
       .join("\n");
 
-  // descarga
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
   a.href = url;

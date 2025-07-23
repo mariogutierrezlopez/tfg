@@ -1,5 +1,3 @@
-// src/logic/agents/CarAgents.ts
-
 import { TrafficAgent } from "./TrafficAgent";
 import { TrafficElement } from "../../utils/types";
 import {
@@ -33,7 +31,7 @@ export class CarAgent extends TrafficAgent {
   carType: CarOption;
   lastRotation = 0;
   private processedRuleIds: Set<string> = new Set();
-  public totalDistance = 0;
+  public totalDistance = 0; // Initialized to 0, needs to be updated.
   public insideRoundaboutIds: Set<string> = new Set();
   targetSpeed = 0;
   currentStepSpeed: number = 0;
@@ -63,6 +61,9 @@ export class CarAgent extends TrafficAgent {
     [key: string]: number;
   };
 
+  public creationTime: number; // Nuevo
+
+
   constructor(
     id: string,
     position: [number, number],
@@ -71,7 +72,8 @@ export class CarAgent extends TrafficAgent {
     carType: CarOption,
     public stepSpeeds: number[] = [],
     decisionTree: TreeNode | null = null,
-    hasConstantSpeed: boolean = false
+    hasConstantSpeed: boolean = false,
+    creationTime = 0
   ) {
     super(id, position, route, marker, carType.id);
     this.maxSpeed = 100;
@@ -86,6 +88,7 @@ export class CarAgent extends TrafficAgent {
     this.prevIsInsideRoundabout = this.isInsideRoundabout;
 
     this.initialPosition = [...position];
+    this.creationTime = creationTime;
 
 
     console.log(`LOG_AGENT (${this.id}): Constructor - Decision tree received:`, decisionTree ? 'Yes' : 'No', `hasConstantSpeed: ${hasConstantSpeed}`);
@@ -137,7 +140,7 @@ export class CarAgent extends TrafficAgent {
     }
 
     if (this.route.length === 0) {
-      this.isInsideRoundabout = false; // Si no hay ruta, no puede estar en la rotonda.
+      this.isInsideRoundabout = false; // If no route, cannot be in roundabout.
       return;
     }
 
@@ -150,14 +153,14 @@ export class CarAgent extends TrafficAgent {
       this.position = [...next];
       this.route.shift();
 
-      // Si estaba en la maniobra, decrementa el contador.
+      // If was in maneuver, decrement the counter.
       if (this.roundaboutManeuverPathLength > 0) {
         this.roundaboutManeuverPathLength--;
-        // Si el contador llega a cero, significa que ha terminado la maniobra de la rotonda.
+        // If counter reaches zero, it means roundabout maneuver is complete.
         if (this.roundaboutManeuverPathLength === 0) {
-          console.log(`LOG_AGENT (${this.id}): Maniobra de rotonda completada. Saliendo del estado 'isInsideRoundabout'.`);
+          console.log(`LOG_AGENT (${this.id}): Roundabout maneuver completed. Exiting 'isInsideRoundabout' state.`);
           this.isInsideRoundabout = false;
-          this.hasLaneBeenAssigned = false; // Listo para la siguiente rotonda.
+          this.hasLaneBeenAssigned = false; // Ready for next roundabout.
         }
       }
     } else {
@@ -165,9 +168,10 @@ export class CarAgent extends TrafficAgent {
       const stepLen = Math.max(this.speed * dt, MIN_STEP_DIST);
       const moved = destination(curPt, stepLen, ang, { units: "meters" });
       this.position = moved.geometry.coordinates as [number, number];
+      this.totalDistance += stepLen / 1000; // Update total distance in kilometers
     }
 
-    // Actualización de la rotación del marcador
+    // Marker rotation update
     if (this.route.length > 0) {
       const rawBearingToNext = bearing(turfPoint(this.position), turfPoint(this.route[0]));
       this.marker.setRotation(rawBearingToNext);
@@ -195,30 +199,29 @@ export class CarAgent extends TrafficAgent {
     }
 
     const distToCenter = turfDistance(this.position, relevantRoundabout.location, { units: 'meters' });
--
-    const entryThreshold = relevantRoundabout.radius + 2;  // Umbral ajustado para entrar
-    const exitThreshold = relevantRoundabout.radius + 25; // Umbral más amplio para salir
+    const entryThreshold = relevantRoundabout.radius + 2;  // Adjusted threshold to enter
+    const exitThreshold = relevantRoundabout.radius + 25; // Wider threshold to exit
 
     const wasInside = this.isInsideRoundabout;
 
-    // Solo se puede entrar si se estaba fuera y se cruza el umbral de entrada.
+    // Can only enter if was outside and crosses entry threshold.
     if (!wasInside && distToCenter < entryThreshold) {
       this.isInsideRoundabout = true;
     }
-    // Solo se puede salir si se estaba dentro y se cruza el umbral de salida.
+    // Can only exit if was inside and crosses exit threshold.
     else if (wasInside && distToCenter > exitThreshold) {
       this.isInsideRoundabout = false;
     }
 
     if (wasInside !== this.isInsideRoundabout) {
-      console.log(`LOG_AGENT (${this.id}): STATE_UPDATE - isInsideRoundabout cambió de ${wasInside} a ${this.isInsideRoundabout} (Dist: ${distToCenter.toFixed(1)}m)`);
+      console.log(`LOG_AGENT (${this.id}): STATE_UPDATE - isInsideRoundabout changed from ${wasInside} to ${this.isInsideRoundabout} (Dist: ${distToCenter.toFixed(1)}m)`);
       if (!this.isInsideRoundabout) {
         this.hasLaneBeenAssigned = false;
       }
     }
-    // --- FIN DE LA NUEVA LÓGICA DE DETECCIÓN ---
+    // --- END OF NEW DETECTION LOGIC ---
 
-    // La lógica de decisión permanece igual, pero ahora se basará en un estado 'isInsideRoundabout' fiable.
+    // Decision logic remains the same, but now based on a reliable 'isInsideRoundabout' state.
     if (this.isInsideRoundabout) {
       this.targetSpeed = ENTRY_LIMIT;
       this.stopped = false;
@@ -254,26 +257,26 @@ export class CarAgent extends TrafficAgent {
 
 
   reactToOtherCars(others: CarAgent[]) {
-    // Si está parado o es un coche "tonto" (aunque ahora todos son inteligentes), no hace nada.
+    // If stopped or a "dumb" car (though now all are smart), does nothing.
     if (this.stopped) {
       return;
     }
 
-    // Restablece la velocidad objetivo a la calculada por las reglas de tráfico.
+    // Reset target speed to that calculated by traffic rules.
     this.targetSpeed = this.isInsideRoundabout ? ENTRY_LIMIT : this.getCurrentStepSpeed();
 
     for (const other of others) {
       if (other.id === this.id) continue;
 
-      // Solo reacciona a los coches que tiene DELANTE.
+      // Only reacts to cars in FRONT.
       if (this.isInFront(other)) {
         const distToOther = distance(turfPoint(this.position), turfPoint(other.position), { units: "meters" });
 
-        // Distancia de seguridad dinámica: más corta en rotondas, más larga fuera.
+        // Dynamic safety distance: shorter in roundabouts, longer outside.
         const safetyDistance = this.isInsideRoundabout ? 10 : 20;
 
         if (distToOther < safetyDistance) {
-          // Frena para igualar la velocidad del coche de delante, nunca para acelerar.
+          // Brake to match speed of car in front, never to accelerate.
           this.targetSpeed = Math.min(this.targetSpeed, other.speed);
         }
       }
@@ -288,7 +291,7 @@ export class CarAgent extends TrafficAgent {
       !Array.isArray(this.position) || this.position.length !== 2 || isNaN(this.position[0]) || isNaN(this.position[1]) ||
       !Array.isArray(rule.location) || rule.location.length !== 2 || isNaN(rule.location[0]) || isNaN(rule.location[1]) ||
       (this.position[0] === next[0] && this.position[1] === next[1])) {
-      console.warn("Segmento inválido en hasPassedRule, se omite.");
+      console.warn("Invalid segment in hasPassedRule, skipping.");
       return false;
     }
 

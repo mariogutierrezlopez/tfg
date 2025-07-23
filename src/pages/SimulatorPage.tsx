@@ -31,6 +31,7 @@ import StatsDashboard from "../components/organisms/statsdashboard/StatsDashboar
 import "./SimulationPage.css";
 import { spawnSecondaryCar } from "../utils/carUtils"; // o la función que uses para spawnear
 import SecondaryCarPanel, { Profile } from "../components/organisms/secondarycarpanel/SecondaryCarPanel";
+import { useRules } from "../context/rulesContext";
 
 
 const mapboxToken = import.meta.env.VITE_MAPBOXGL_ACCESS_TOKEN;
@@ -77,6 +78,8 @@ const SimulatorApp: React.FC = () => {
   const selectedCar = agentsRef.current.find((car) => car.id === selectedCarId);
 
   const [rulesError, setRulesError] = useState<string | null>(null);
+
+  const { tree } = useRules();
 
 
 
@@ -201,21 +204,21 @@ const SimulatorApp: React.FC = () => {
 
   useEffect(() => {
     if (mapInstance) {
-        const getCoordsOnClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
-            const lng = e.lngLat.lng;
-            const lat = e.lngLat.lat;
-            console.log(`COORDS_CENTRO_MANUAL: [${lng}, ${lat}]`);
-        };
+      const getCoordsOnClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+        const lng = e.lngLat.lng;
+        const lat = e.lngLat.lat;
+        console.log(`COORDS_CENTRO_MANUAL: [${lng}, ${lat}]`);
+      };
 
-        mapInstance.on('click', getCoordsOnClick);
-        console.log("Listener de clic añadido al mapa para obtener coordenadas. Haz clic en el centro de la rotonda.");
+      mapInstance.on('click', getCoordsOnClick);
+      console.log("Listener de clic añadido al mapa para obtener coordenadas. Haz clic en el centro de la rotonda.");
 
-        return () => {
-            mapInstance.off('click', getCoordsOnClick);
-            console.log("Listener de clic eliminado del mapa.");
-        };
+      return () => {
+        mapInstance.off('click', getCoordsOnClick);
+        console.log("Listener de clic eliminado del mapa.");
+      };
     }
-}, [mapInstance]);
+  }, [mapInstance]);
 
 
 
@@ -283,20 +286,24 @@ const SimulatorApp: React.FC = () => {
                   });
                   if (mapRef.current) {
                     importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
-                      agentsRef.current = cars;
-                      setTrafficRules(rules);              // ← guarda las reglas
+                      agentsRef.current = []; // Limpiamos los agentes actuales
+                      setTrafficRules(rules);
 
-                      const mainCar = cars.find(c => c.id === "main-car");
-                      if (mainCar && mainCar.route.length > 1) {
-                        drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
-                      }
+                      cars.forEach(car => {
+                        setTimeout(() => {
+                          agentsRef.current.push(car);
+                          if (car.id === "main-car" && car.route.length > 1) {
+                            drawCarRoute(mapRef.current!, car.id, car.route);
+                          }
+                        }, car.creationTime * 1000);
+                      });
 
                       addRoadClickableLayer(mapRef.current!);
                       setShowSimulationControls(true);
                       setShowCarSelector(true);
                       setSelectionSent(true);
                       setShowGallery(false);
-                    });
+                    }, tree);
                   }
                 });
             }}
@@ -320,18 +327,22 @@ const SimulatorApp: React.FC = () => {
               const file = e.target.files?.[0];
               if (file && mapRef.current) {
                 importScenarioFromCsv(file, mapRef.current, (cars, rules) => {
-                  agentsRef.current = cars;
+                  agentsRef.current = []; // Limpiamos los agentes actuales
                   setTrafficRules(rules);
 
-                  const mainCar = cars.find((c) => c.id === "main-car");
-                  if (mainCar && mainCar.route.length > 1) {
-                    drawCarRoute(mapRef.current!, mainCar.id, mainCar.route);
-                  }
+                  cars.forEach(car => {
+                    setTimeout(() => {
+                      agentsRef.current.push(car); // CHANGE THIS LINE
+                      if (car.id === "main-car" && car.route.length > 1) {
+                        drawCarRoute(mapRef.current!, car.id, car.route);
+                      }
+                    }, car.creationTime * 1000);
+                  });
 
                   setShowSimulationControls(true);
                   setShowCarSelector(true);
                   setSelectionSent(true);
-                });
+                }, tree);
               }
             }}
             inputMode={inputMode}
@@ -426,7 +437,7 @@ const SimulatorApp: React.FC = () => {
                 zIndex: 1001,
               }}
             >
-              
+
               <button
                 className="export-btn"
                 onClick={() => exportScenarioToCsv(agentsRef.current, trafficRules)}
